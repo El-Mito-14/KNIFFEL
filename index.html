@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a3a32">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Kniffel-Assistent</title>
+<style>
+:root{
+  --felt-dark:#0f241f; --felt:#1a3a32; --felt-2:#2a4b41; --felt-3:#356055;
+  --ivory:#f6f1e3; --paper:#f7f5ee; --paper-2:#ece9dc; --ink:#17233f; --soft:#6a7491;
+  --line:#e3e0d2; --gold:#e0b04a; --gold-h:#edc263; --red:#c4402f;
+  --good:#2c8a58; --good-bg:#d6eddf; --bad:#a8372b; --bad-bg:#f6ddd8; --neutral-bg:#e9e6d8;
+  --tint:#faf1d4;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--felt-dark);color:var(--ink);
+  font-family:Roboto,"Segoe UI",system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.35;
+  overscroll-behavior-y:contain}
+body{min-height:100vh;min-height:100dvh;padding-bottom:env(safe-area-inset-bottom)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+button:disabled{opacity:.4;cursor:not-allowed}
+.num{font-variant-numeric:tabular-nums}
+.die,.pad button,.sortchip{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+
+/* ---------- Einrichtung ---------- */
+.setup{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:24px 20px;
+  padding-top:max(24px,env(safe-area-inset-top))}
+.setup .card{background:var(--felt);border-radius:24px;padding:28px 22px;color:var(--ivory);
+  box-shadow:inset 0 0 0 1px #2d5a50}
+.setup h1{margin:6px 0 4px;font-size:30px;font-weight:700;text-align:center;letter-spacing:.2px}
+.setup .sub{margin:0 0 22px;text-align:center;color:#b7d0c6;font-size:17px}
+.setup .dicerow{display:flex;justify-content:center;gap:6px;margin-bottom:6px}
+.setup .dicerow svg{width:44px;height:44px}
+.countrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.countrow button,.vbtn{background:var(--felt-2);color:var(--ivory);border-radius:16px;min-height:60px;font-size:26px;font-weight:700}
+.countrow button.on,.vbtn.on{background:var(--gold);color:#2a2006}
+.vbtn{display:block;width:100%;text-align:left;padding:14px 16px;font-size:20px;margin-bottom:10px;min-height:0}
+.vbtn small{display:block;font-size:14px;font-weight:400;margin-top:4px;opacity:.85}
+.field{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.field label{width:76px;color:#b7d0c6;font-size:15px}
+.field input{flex:1;min-width:0;font:inherit;font-size:18px;padding:12px 14px;border-radius:14px;border:2px solid #3f6b5f;
+  background:var(--ivory);color:#1b1b1b;outline:none}
+.field input:focus{border-color:var(--gold)}
+.row2{display:flex;gap:10px;margin-top:20px}
+.btn{border-radius:14px;padding:13px 18px;font-weight:600;font-size:16px;min-height:48px;text-align:center}
+.btn.gold{background:var(--gold);color:#2a2006}
+.btn.gold:active{background:var(--gold-h)}
+.btn.felt{background:var(--felt-2);color:#e6efe9}
+.btn.ink{background:var(--ink);color:#fff}
+.btn.soft{background:#ebe8db;color:var(--ink)}
+.btn.wide{flex:1}
+.btn.big{width:100%;margin-top:22px;font-size:18px;min-height:54px}
+.resume p{margin:4px 0;text-align:center;color:#d3e4dc}
+
+/* ---------- Spiel ---------- */
+.bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px;
+  padding-top:max(10px,env(safe-area-inset-top));color:#9cc3b5}
+.bar h2{margin:0;font-size:18px;font-weight:600}
+.bar .ibtns{display:flex;gap:6px}
+.ibtn{background:var(--felt-2);color:#e6efe9;border-radius:12px;min-width:44px;height:40px;padding:0 12px;font-size:14px;font-weight:600}
+.ibtn:disabled{opacity:.35}
+
+#panel{position:sticky;top:0;z-index:5;padding:0 10px 8px;background:var(--felt-dark)}
+.panel{background:var(--felt);border-radius:20px;padding:12px 12px 10px;
+  color:var(--ivory);box-shadow:0 6px 16px rgba(0,0,0,.35),inset 0 0 0 1px #2d5a50}
+.phead{display:flex;align-items:center;gap:10px}
+.pname{font-size:22px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%}
+.dots{display:flex;gap:6px}
+.dots i{width:11px;height:11px;border-radius:50%;background:#3e645a}
+.dots i.on{background:var(--gold)}
+.pround{margin-left:auto;font-size:12px;color:#8fb5a8;text-align:right}
+.dice{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 8px}
+.die{position:relative;aspect-ratio:1;border-radius:18%;padding:0;background:none;touch-action:manipulation;
+  filter:drop-shadow(0 3px 2px rgba(0,0,0,.45))}
+.die svg{width:100%;height:100%;display:block}
+.die.sel{outline:3px solid var(--gold);outline-offset:3px}
+.die.roll svg{animation:shake .12s linear infinite}
+@keyframes shake{0%{transform:rotate(-6deg) scale(1.03)}50%{transform:rotate(5deg) scale(.97)}100%{transform:rotate(-6deg) scale(1.03)}}
+.tags{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:-2px;margin-bottom:6px}
+.tags span{font-size:11px;text-align:center;color:#9fbfb3;min-height:14px}
+.tags span.keep{color:#ffa898;font-weight:600}
+.pad{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:8px}
+.pad button{background:var(--felt-2);color:#e6efe9;border-radius:12px;min-height:46px;font-size:20px;font-weight:700}
+.pad button:active{background:var(--gold);color:#2a2006}
+.acts{display:flex;gap:8px}
+.acts .btn{min-height:46px;padding:10px 12px;font-size:15px}
+.acts .btn.small{flex:0 0 52px;padding:0}
+.status{margin-top:8px;font-size:13px;color:#cfe0d9;min-height:2.6em}
+
+.tabs{display:flex;gap:6px;margin:14px 10px 10px;background:var(--felt);padding:4px;border-radius:16px}
+.tabs button{flex:1;min-height:44px;border-radius:12px;color:#b7d0c6;font-weight:600;font-size:15px}
+.tabs button.on{background:var(--paper);color:var(--ink)}
+.content{margin:0 10px 28px}
+
+.note{color:#b7d0c6;font-size:13px;margin:0 2px 10px}
+.sortrow{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}
+.sortrow::-webkit-scrollbar{display:none}
+.sortchip{flex:0 0 auto;background:var(--felt-2);color:#d7e6df;border-radius:20px;padding:8px 14px;font-size:14px;font-weight:600;min-height:38px}
+.sortchip.on{background:var(--paper);color:var(--ink)}
+.sortchip.info{background:transparent;border:1.5px solid #4c7b6f;color:#9fc4b6}
+
+.card{background:var(--paper);border-radius:18px;padding:14px 14px 12px;margin-bottom:10px;border:2px solid transparent}
+.card.top{border-color:#6fb28d}
+.chead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.cname{font-size:18px;font-weight:700;color:var(--ink)}
+.cshort{font-size:12.5px;color:var(--soft)}
+.cnow{text-align:right;line-height:1}
+.cnow b{font-size:28px;font-weight:700;color:var(--ink)}
+.cnow span{display:block;font-size:11px;color:var(--soft);margin-top:2px}
+.metric{display:flex;align-items:center;gap:10px;margin-top:10px}
+.metric .mp{font-size:19px;font-weight:700;min-width:70px}
+.bar2{flex:1;height:8px;border-radius:5px;background:#e8e5d7;overflow:hidden}
+.bar2 i{display:block;height:100%;background:var(--good);border-radius:5px}
+.chip{font-size:13px;font-weight:700;border-radius:12px;padding:3px 10px}
+.chip.good{background:var(--good-bg);color:var(--good)}
+.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.neutral{background:var(--neutral-bg);color:var(--soft)}
+.chip.muted{background:#ebe8dc;color:#9aa1b5}
+.sub{font-size:13px;color:var(--soft);margin-top:3px}
+.rec{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:15px}
+.rec a{color:#2d5fb0;font-weight:600;text-decoration:underline;font-size:14px;padding:6px 4px}
+.rec .ok{color:var(--good);font-weight:600;font-size:14px}
+.selrow{margin-top:6px;padding:8px 10px;background:var(--paper-2);border-radius:12px;font-size:13px;color:var(--ink);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cbtns{display:flex;gap:8px;margin-top:12px}
+.cbtns .btn{min-height:46px;padding:10px 12px;font-size:15px}
+.cbtns .btn.main{flex:1}
+.chance{background:var(--paper-2)}
+.empty{background:var(--paper);border-radius:18px;padding:18px;color:var(--soft);font-size:15px}
+
+/* ---------- Punkteblock ---------- */
+.boardwrap{background:var(--paper);border-radius:18px;padding:8px 6px;overflow-x:auto}
+table.board{border-collapse:collapse;width:100%;min-width:100%}
+.board th,.board td{padding:9px 6px;text-align:center;font-size:15px}
+.board th{font-size:13px;font-weight:700;color:var(--soft);position:sticky;top:0}
+.board th:first-child,.board td:first-child{text-align:left;position:sticky;left:0;background:var(--paper);padding-left:10px;white-space:nowrap}
+.board tr:nth-child(even) td{background:#f1eee3}
+.board tr:nth-child(even) td:first-child{background:#f1eee3}
+.board td.cur,.board th.cur{background:var(--tint)!important;color:var(--ink)}
+.board td.open{color:#8c95ad;font-weight:600}
+.board td.click{cursor:pointer;outline:2px dashed #e0b04a;outline-offset:-4px;border-radius:8px}
+.board td.struck{color:#b9bdca}
+.board tr.sum td{font-weight:700;border-top:2px solid var(--ink)}
+.board tr.total td{font-weight:700;font-size:17px}
+.bonusbox{margin:12px 4px 2px;font-size:13px;color:var(--soft)}
+.bonusbar{height:8px;background:#e4e1d2;border-radius:5px;margin-top:6px;overflow:hidden}
+.bonusbar i{display:block;height:100%;background:var(--gold)}
+.hint{margin:10px 6px 0;font-size:12px;color:var(--soft)}
+
+/* ---------- Sheet / Toast ---------- */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--paper);border-radius:22px 22px 0 0;
+  padding:18px 18px calc(18px + env(safe-area-inset-bottom));max-height:86dvh;overflow-y:auto;
+  animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.sheet h3{margin:0 0 4px;font-size:20px}
+.sheet p{margin:4px 0 12px;color:var(--soft);font-size:15px}
+.sheet .btn{display:block;width:100%;margin-top:8px}
+.sheet dl{margin:8px 0 0}
+.sheet dt{font-weight:700;margin-top:12px}
+.sheet dd{margin:2px 0 0;color:#454e68;font-size:14.5px}
+#toast{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:30;display:none;
+  background:#17233f;color:#fff;border-radius:14px;padding:12px 14px;font-size:15px;align-items:center;gap:10px}
+#toast.show{display:flex}
+#toast span{flex:1}
+#toast button{color:var(--gold);font-weight:700;padding:6px 8px}
+.langlist .vbtn{font-size:20px;padding:15px 18px;margin-bottom:8px}
+#app{overflow-x:clip}
+.slideR{animation:inR .22s ease-out}
+.slideL{animation:inL .22s ease-out}
+@keyframes inR{from{transform:translateX(36px);opacity:.25}to{transform:none;opacity:1}}
+@keyframes inL{from{transform:translateX(-36px);opacity:.25}to{transform:none;opacity:1}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="sheet-root"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Logik: Kategorien und Spielvarianten
+   ===================================================================== */
+const BONUS_LIMIT = 63, BONUS_POINTS = 35, REACH = 0.25, MAX_PLAYERS = 6, MAX_NAME = 14;
+const cntOf = d => { const c = [0,0,0,0,0,0,0]; for (const v of d) c[v]++; return c; };
+const sumOf = d => d.reduce((a, b) => a + b, 0);
+const maxCount = d => Math.max(...cntOf(d).slice(1));
+const hasRun = (d, n) => { const s = new Set(d);
+  for (let a = 1; a + n - 1 <= 6; a++) { let ok = true; for (let k = a; k < a + n; k++) if (!s.has(k)) { ok = false; break; } if (ok) return true; }
+  return false; };
+const pairScore = d => { const c = cntOf(d); for (let v = 6; v >= 1; v--) if (c[v] >= 2) return 2 * v; return 0; };
+const fullHouse = d => { const c = cntOf(d).slice(1).filter(x => x > 0).sort((a, b) => a - b);
+  return (c.length === 2 && c[0] === 2 && c[1] === 3) ? 25 : 0; };
+const paschAlt = (d, n) => { const c = cntOf(d); for (let v = 6; v >= 1; v--) if (c[v] >= n) return n * v; return 0; };
+
+
+function makeCats(variant) {
+  const alt = variant === "alt", cats = [];
+  const names = ["Einser", "Zweier", "Dreier", "Vierer", "Fünfer", "Sechser"];
+  names.forEach((nm, i) => { const n = i + 1;
+    cats.push({ id: "u" + n, name: nm, short: "Ziel: mind. 3× die " + n, upper: true,
+      score: d => n * cntOf(d)[n], good: d => cntOf(d)[n] >= 3 }); });
+  if (alt) {
+    cats.push({ id: "pair", name: "Ein Paar", short: "Ziel: Paar aus 5ern oder 6ern", score: pairScore, good: d => pairScore(d) >= 10 });
+    cats.push({ id: "p3", name: "Dreierpasch", short: "Ziel: 3× Fünfer oder Sechser", score: d => paschAlt(d, 3), good: d => paschAlt(d, 3) >= 15 });
+    cats.push({ id: "p4", name: "Viererpasch", short: "Ziel: 4× Vierer, Fünfer, Sechser", score: d => paschAlt(d, 4), good: d => paschAlt(d, 4) >= 16 });
+  } else {
+    cats.push({ id: "p3", name: "Dreierpasch", short: "Ziel: Summe ab 20", score: d => maxCount(d) >= 3 ? sumOf(d) : 0, good: d => maxCount(d) >= 3 && sumOf(d) >= 20 });
+    cats.push({ id: "p4", name: "Viererpasch", short: "Ziel: Summe ab 18", score: d => maxCount(d) >= 4 ? sumOf(d) : 0, good: d => maxCount(d) >= 4 && sumOf(d) >= 18 });
+  }
+  cats.push({ id: "fh", name: "Full House", short: "25 Punkte", score: fullHouse, good: d => fullHouse(d) > 0 });
+  cats.push({ id: "ks", name: "Kleine Straße", short: "30 Punkte", score: d => hasRun(d, 4) ? 30 : 0, good: d => hasRun(d, 4) });
+  cats.push({ id: "gs", name: "Große Straße", short: "40 Punkte", score: d => hasRun(d, 5) ? 40 : 0, good: d => hasRun(d, 5) });
+  cats.push({ id: "kn", name: "Kniffel", short: "50 Punkte", score: d => maxCount(d) === 5 ? 50 : 0, good: d => maxCount(d) === 5 });
+  cats.push({ id: "ch", name: "Chance", short: "Summe aller Augen", notnagel: true, score: d => sumOf(d), good: d => sumOf(d) >= 22 });
+  cats.forEach((c, i) => { c.order = i; c.variant = variant; });
+  return cats;
+}
+const CATLISTS = { classic: makeCats("classic"), alt: makeCats("alt") };
+const CATMAPS = {}; for (const v in CATLISTS) { CATMAPS[v] = {}; CATLISTS[v].forEach(c => CATMAPS[v][c.id] = c); }
+
+/* =====================================================================
+   Logik: Wahrscheinlichkeiten (exakt, dynamische Programmierung)
+   ===================================================================== */
+const STATES = [], SIDX = new Map();
+for (let a = 1; a <= 6; a++) for (let b = a; b <= 6; b++) for (let c = b; c <= 6; c++) for (let d = c; d <= 6; d++) for (let e = d; e <= 6; e++) {
+  SIDX.set("" + a + b + c + d + e, STATES.length); STATES.push([a, b, c, d, e]); }
+const keyOf = arr => [...arr].sort((x, y) => x - y).join("");
+const KEPT_ARR = new Map();           // Schlüssel -> Array
+const KEEPS = STATES.map(d => { const m = new Map();
+  for (let mask = 0; mask < 32; mask++) { const kept = d.filter((_, i) => (mask >> i) & 1); const k = kept.join("");
+    if (!m.has(k)) { m.set(k, kept); KEPT_ARR.set(k, kept); } }
+  return [...m.keys()]; });
+const KEPTS = [...KEPT_ARR.keys()];
+const DIST = new Map();
+for (const k of KEPTS) { const kept = KEPT_ARR.get(k), n = 5 - kept.length, total = Math.pow(6, n), acc = new Map();
+  for (let i = 0; i < total; i++) { let x = i; const all = kept.slice();
+    for (let j = 0; j < n; j++) { all.push(x % 6 + 1); x = Math.floor(x / 6); }
+    const si = SIDX.get(keyOf(all)); acc.set(si, (acc.get(si) || 0) + 1); }
+  const outs = [...acc.keys()]; DIST.set(k, { outs, probs: outs.map(o => acc.get(o) / total) }); }
+
+function buildTable(cat) {
+  const E = [STATES.map(d => cat.score(d))], P = [STATES.map(d => cat.good(d) ? 1 : 0)], B = [null], KVE = {}, KVP = {};
+  for (let r = 1; r <= 2; r++) {
+    const kve = {}, kvp = {};
+    for (const k of KEPTS) { const { outs, probs } = DIST.get(k);
+      if (KEPT_ARR.get(k).length === 5) { kve[k] = E[0][outs[0]]; kvp[k] = P[0][outs[0]]; }
+      else { let e = 0, p = 0; for (let j = 0; j < outs.length; j++) { e += probs[j] * E[r-1][outs[j]]; p += probs[j] * P[r-1][outs[j]]; } kve[k] = e; kvp[k] = p; } }
+    const er = [], pr = [], br = [];
+    for (let s = 0; s < STATES.length; s++) { let best = null;
+      for (const k of KEEPS[s]) { const ve = kve[k], vp = kvp[k];
+        if (best === null || ve > best.e + 1e-9 || (Math.abs(ve - best.e) <= 1e-9 && (vp > best.p + 1e-9 || (Math.abs(vp - best.p) <= 1e-9 && k.length < best.k.length)))) best = { e: ve, p: vp, k }; }
+      er.push(best.e); pr.push(best.p); br.push(best.k); }
+    E.push(er); P.push(pr); B.push(br); KVE[r] = kve; KVP[r] = kvp;
+  }
+  let par = 0; { const { outs, probs } = DIST.get(""); for (let j = 0; j < outs.length; j++) par += probs[j] * E[2][outs[j]]; }
+  return { E, P, B, KVE, KVP, par };
+}
+const TABLES = {};
+function tableFor(cat) { const k = cat.variant + ":" + cat.id; return TABLES[k] || (TABLES[k] = buildTable(cat)); }
+
+function evalSelection(t, s, r, keptKey) {
+  if (r === 0) return [t.P[0][s], t.E[0][s]];
+  return [t.KVP[r][keptKey], t.KVE[r][keptKey]];
+}
+function keptKeyOf(dice, keep) { return dice.filter((v, i) => keep[i]).sort((a, b) => a - b).join(""); }
+
+function analyse(dice, rollNo, keep, openCats) {
+  const sd = [...dice].sort((a, b) => a - b), s = SIDX.get(sd.join("")), r = 3 - rollNo, kk = keptKeyOf(dice, keep), rows = [];
+  for (const c of openCats) { if (c.notnagel) continue;
+    const t = tableFor(c), now = c.score(sd);
+    const row = { cat: c, now, now_w: now - t.par, par: t.par, good: !!c.good(sd) };
+    if (r > 0) { row.bp = t.P[r][s]; row.be = t.E[r][s]; row.rec = KEPT_ARR.get(t.B[r][s]); row.bw = row.be - t.par;
+      const [sp, se] = evalSelection(t, s, r, kk); row.sp = sp; row.se = se; row.sw = se - t.par; }
+    rows.push(row); }
+  return rows;
+}
+
+const CHAINS = [["kn", "p4", "p3", "pair"], ["gs", "ks"]];
+const FAMILY = new Set(["u1","u2","u3","u4","u5","u6","pair","p3","p4","kn"]);
+const PASCH = ["kn", "p4", "p3", "pair"];
+
+function smartOrder(rows, r, hasLocks) {
+  const pre = hasLocks ? "s" : "b";
+  const val = x => r === 0 ? x.now_w : x[pre + "w"];
+  const chance = x => r === 0 ? 0 : x[pre + "p"];
+  const reachable = x => x.good || chance(x) >= REACH;
+  const cmp = r === 0
+    ? (a, b) => (b.good - a.good) || (val(b) - val(a)) || (b.now - a.now)
+    : (a, b) => (val(b) - val(a)) || (chance(b) - chance(a)) || (b.now - a.now);
+  const order = [...rows].sort(cmp);
+  const byid = {}; order.forEach(x => byid[x.cat.id] = x);
+  const ids = order.map(x => x.cat.id);
+  const chainPass = () => { let changed = false;
+    for (const chain of CHAINS) { const members = chain.filter(c => byid[c]);
+      members.forEach((hi, hi_i) => { if (!reachable(byid[hi])) return;
+        for (const lo of members.slice(hi_i + 1)) if (ids.indexOf(hi) > ids.indexOf(lo)) { ids.splice(ids.indexOf(hi), 1); ids.splice(ids.indexOf(lo), 0, hi); changed = true; } }); }
+    return changed; };
+  const guardPass = () => { let changed = false;
+    for (const a of [...ids]) { if (!FAMILY.has(a) || !byid[a].good) continue;
+      for (const b of [...ids]) { if (b === a || !FAMILY.has(b) || byid[b].good) continue;
+        if (PASCH.includes(a) && PASCH.includes(b)) continue;
+        if (ids.indexOf(a) > ids.indexOf(b)) { ids.splice(ids.indexOf(a), 1); ids.splice(ids.indexOf(b), 0, a); changed = true; } } }
+    return changed; };
+  for (let i = 0; i < 8; i++) { const c1 = chainPass(), c2 = guardPass(); if (!(c1 || c2)) break; }
+  return ids.map(i => byid[i]);
+}
+
+function orderRows(rows, r, hasLocks, key, desc) {
+  if (key === "auto") { const res = smartOrder(rows, r, hasLocks); return desc ? res : res.reverse(); }
+  const dir = desc ? -1 : 1;
+  if (key === "name") return [...rows].sort((a, b) => dir * (a.cat.order - b.cat.order));
+  if (key === "now") return [...rows].sort((a, b) => dir * (a.now - b.now) || (b.now_w - a.now_w));
+  const pre = hasLocks ? "s" : "b", m = key.slice(1);
+  const f = r === 0 ? (x => x.now_w) : (x => x[pre + m]);
+  const sec = r === 0 ? (x => x.now) : (x => x[pre + "w"]);
+  return [...rows].sort((a, b) => dir * (f(a) - f(b)) || (sec(b) - sec(a)));
+}
+
+function chanceInfo(dice, rollNo, keep, cat) {
+  const sd = [...dice].sort((a, b) => a - b), s = SIDX.get(sd.join("")), r = 3 - rollNo, info = { now: cat.score(sd) };
+  if (r > 0) { const t = tableFor(cat); info.best_e = t.E[r][s]; info.sel_e = evalSelection(t, s, r, keptKeyOf(dice, keep))[1]; }
+  return info;
+}
+
+/* =====================================================================
+   Spielzustand
+   ===================================================================== */
+const STORE = "kniffel-android-v1";
+const blankTurn = () => ({ dice: [0,0,0,0,0], keep: [false,false,false,false,false], frozen: [false,false,false,false,false], rollNo: 1 });
+const newGame = (names, variant) => Object.assign({ variant, players: names.map(n => ({ name: n, scores: {} })), current: 0, history: [] }, blankTurn());
+const catsOf = g => CATLISTS[g.variant];
+const catOf = (g, id) => CATMAPS[g.variant][id];
+const isComplete = g => g.dice.every(v => v > 0);
+const openCats = (g, pi) => catsOf(g).filter(c => !(c.id in g.players[pi === undefined ? g.current : pi].scores));
+const isFinished = g => g.players.every(p => Object.keys(p.scores).length === catsOf(g).length);
+function totals(g, pi) { const sc = g.players[pi].scores; let up = 0, low = 0;
+  for (const c of catsOf(g)) if (c.id in sc) { if (c.upper) up += sc[c.id][0]; else low += sc[c.id][0]; }
+  const bonus = up >= BONUS_LIMIT ? BONUS_POINTS : 0; return { up, bonus, low, total: up + bonus + low }; }
+function saveGame() { try { if (G) localStorage.setItem(STORE, JSON.stringify(G)); } catch (e) {} }
+function loadGame() { try { const g = JSON.parse(localStorage.getItem(STORE) || "null");
+  if (g && CATLISTS[g.variant] && Array.isArray(g.players) && g.players.length >= 1 && g.players.length <= MAX_PLAYERS && g.dice && g.dice.length === 5 && g.rollNo >= 1 && g.rollNo <= 3) {
+    g.players.forEach(p => { for (const k of Object.keys(p.scores)) if (!CATMAPS[g.variant][k]) delete p.scores[k]; }); return g; } } catch (e) {} return null; }
+function clearSave() { try { localStorage.removeItem(STORE); } catch (e) {} }
+
+/* =====================================================================
+   Sprachen
+   ===================================================================== */
+const LANGS = [["de", "Deutsch"], ["en", "English"], ["fr", "Français"], ["es", "Español"], ["it", "Italiano"]];
+const LSTORE = "kniffel-lang";
+const L = {
+de: {
+  "app.title": "Kniffel-Assistent", "lang.title": "Sprache wählen", "next": "Weiter", "back": "Zurück",
+  "howMany": "Wie viele Spieler nehmen teil?", "names.title": "Spielernamen", "names.many": "Wie heißen die {0} Spieler?", "names.one": "Wie heißt der Spieler?",
+  "player": "Spieler {0}", "variant.title": "Spielvariante", "variant.ask": "Welche Regeln sollen gelten?",
+  "variant.classic.name": "Klassisch", "variant.alt.name": "Alternativ",
+  "variant.classic.desc": "Wie das normale Kniffel: Dreierpasch und Viererpasch zählen die Summe aller fünf Würfel. Es gibt kein „Ein Paar“.",
+  "variant.alt.desc": "Dreierpasch und Viererpasch zählen nur die Pasch-Augen (Dreierpasch = 3 × Augenzahl, Viererpasch = 4 × Augenzahl). Zusätzlich gibt es die Kategorie „Ein Paar“.",
+  "start": "Spiel starten", "resume.title": "Willkommen zurück", "resume.sub": "Es gibt einen gespeicherten Spielstand.", "resume.info": "Variante {0} · {1} von {2} Eintragungen",
+  "newGame": "Neues Spiel", "continue": "Fortsetzen", "undoShort": "↶ Zurück", "undo.long": "Letzten Eintrag rückgängig", "undo": "Rückgängig", "menu.aria": "Menü",
+  "gameOver": "Spiel beendet", "round": "Runde {0} von {1}",
+  "st.sel": "Tippe die richtige Augenzahl für den markierten Würfel.", "st.first": "Tippe unten ein, was du gewürfelt hast, oder würfle digital.",
+  "st.missing": "Trage die {0} neu gewürfelten Würfel ein oder würfle sie digital. Rot = behalten.",
+  "st.analysis": "Tippe Würfel an, um sie zu behalten (rot). Lang drücken korrigiert die Augenzahl.",
+  "st.last": "Das war dein letzter Wurf. Trag jetzt eine Kategorie ein oder streiche eine.",
+  "st.keep0": " Aktuell würfelst du alle 5 neu.", "st.keep5": " Du behältst alle Würfel.", "st.keepN": " Du behältst {0} und würfelst {1} neu.",
+  "tag.keep": "Behalten", "tag.new": "neu", "die.aria": "Würfel {0}", "die.empty": ", leer", "die.kept": ", behalten",
+  "digital": "Digital würfeln", "next.roll": "Weiter zu Wurf {0}", "reset.aria": "Zug neu beginnen",
+  "tab.eval": "Auswertung", "tab.board": "Punkteblock", "note.left": "Verbleibende Würfe für {0}: {1}.", "note.none": "Keine Würfe mehr übrig.",
+  "note.hidden": " Bereits belegte Kategorien werden nicht angezeigt.",
+  "chip.auto": "Empfehlung", "chip.name": "Kategorie", "chip.now": "Jetzt", "chip.points": "Punkte", "chip.chance": "Chance", "chip.avg": "Ø Punkte", "chip.rating": "Bewertung", "chip.info": "Was bedeutet das?",
+  "now.label": "jetzt", "pts.label": "Punkte", "card.avg": "Ø {0} Punkte bei bester Strategie",
+  "rec.rerollAll": "alle neu würfeln", "rec.keepAll": "alle behalten", "rec.keep": "behalte {0}", "rec.apply": "übernehmen", "rec.ok": "✓ ausgewählt", "card.yourSel": "Deine Auswahl:",
+  "btn.enter": "Eintragen ({0})", "btn.strike": "Streichen", "btn.strike0": "Mit 0 streichen",
+  "chance.title": "Notnagel: Chance", "chance.desc": "Mit Summen-Strategie im Schnitt {0}, mit deiner Auswahl {1}. Nur nehmen, wenn nichts anderes passt.",
+  "chance.desc0": "Nur nehmen, wenn nichts anderes passt.", "chance.enter": "Chance eintragen ({0})",
+  "empty.over": "Das Spiel ist beendet. Das Ergebnis siehst du im Punkteblock.", "empty.dice": "Sobald alle 5 Würfel eingetragen sind, siehst du hier die Auswertung für {0}.",
+  "empty.onlyChance": "Für {0} ist nur noch die Chance offen. Nutze unten den Notnagel.",
+  "board.sumUp": "Summe oben", "board.bonus": "Bonus (ab 63)", "board.total": "Gesamt",
+  "board.bonusSure": "{0} hat den Bonus von {1} Punkten sicher.", "board.bonusProg": "{0}: obere Hälfte {1} von {2} Punkten für den Bonus.",
+  "board.hintTap": "Tippe auf ein gestricheltes Feld, um den aktuellen Wurf dort einzutragen oder das Feld zu streichen. Wische nach rechts für die Auswertung.",
+  "board.hintWait": "Sobald alle 5 Würfel eingetragen sind, zeigt der Block in den freien Feldern, was sie einbringen würden.",
+  "toast.struck": "{0}: {1} gestrichen", "toast.scored": "{0}: {1} {2} Punkte", "final.rank": "{0}. {1} {2} Punkte",
+  "ng.title": "Neues Spiel starten?", "ng.body": "Der aktuelle Spielstand geht verloren.", "ng.yes": "Ja, neues Spiel", "cancel": "Abbrechen", "close": "Schließen",
+  "cell.info": "{0}. Mit diesem Wurf: {1} Punkte.", "cell.enter": "{0} Punkte eintragen", "cell.strike": "Feld streichen (0 Punkte)",
+  "menu.title": "Menü", "menu.explain": "Spalten erklärt", "menu.lang": "Sprache",
+  "x.now.t": "Jetzt / Punkte", "x.now.d": "Punkte, die du mit den aktuell liegenden Würfeln sofort für diese Kategorie bekommst.",
+  "x.chance.t": "Chance", "x.chance.d": "Wahrscheinlichkeit, das Ziel der Kategorie (steht unter dem Namen) bis zum Zugende zu erreichen, wenn du optimal weiterwürfelst.",
+  "x.avg.t": "Ø Punkte", "x.avg.d": "Durchschnittlich erwartete Punkte in dieser Kategorie.",
+  "x.rating.t": "Bewertung", "x.rating.d": "Erwartete Punkte minus die Punkte, die die Kategorie bei einem normalen Zug im Schnitt bringt. Grün lohnt sich jetzt, rot lieber aufsparen.",
+  "x.rec.t": "Empfehlung", "x.rec.d": "Welche Würfel du für diese Kategorie behalten solltest. „übernehmen“ markiert sie für dich.",
+  "x.sel.t": "Deine Auswahl", "x.sel.d": "Werte, wenn du genau die rot markierten Würfel behältst und den Rest neu würfelst.",
+  "x.order.t": "Sortierung „Empfehlung“", "x.order.d": "Nach Bewertung. Anspruchsvollere Ziele stehen vor leichteren, sobald sie realistisch sind (Chance ab 25 % oder schon erreicht): Kniffel vor Viererpasch vor Dreierpasch (vor Ein Paar), Große vor Kleiner Straße. Ein erreichtes Ziel steht außerdem vor einem verfehlten, das auf die gleichen Würfel setzt (vier Dreier vor einem mageren Viererpasch aus Dreiern).",
+  "x.sort.t": "Sortieren", "x.sort.d": "Tippe auf eine Sortier-Schaltfläche. Nochmal tippen dreht die Richtung (▼/▲).",
+  "x.swipe.t": "Wischen", "x.swipe.d": "Wische nach links oder rechts, um zwischen Auswertung und Punkteblock zu wechseln.",
+  "cat.u1": "Einser", "cat.u2": "Zweier", "cat.u3": "Dreier", "cat.u4": "Vierer", "cat.u5": "Fünfer", "cat.u6": "Sechser", "cat.pair": "Ein Paar", "cat.p3": "Dreierpasch", "cat.p4": "Viererpasch",
+  "cat.fh": "Full House", "cat.ks": "Kleine Straße", "cat.gs": "Große Straße", "cat.kn": "Kniffel", "cat.ch": "Chance",
+  "short.upper": "Ziel: mind. 3× die {0}", "short.pair": "Ziel: Paar aus 5ern oder 6ern", "short.p3.classic": "Ziel: Summe ab 20", "short.p4.classic": "Ziel: Summe ab 18",
+  "short.p3.alt": "Ziel: 3× Fünfer oder Sechser", "short.p4.alt": "Ziel: 4× Vierer, Fünfer, Sechser", "short.fh": "25 Punkte", "short.ks": "30 Punkte", "short.gs": "40 Punkte", "short.kn": "50 Punkte", "short.ch": "Summe aller Augen"
+},
+en: {
+  "app.title": "Yahtzee Assistant", "lang.title": "Choose language", "next": "Next", "back": "Back",
+  "howMany": "How many players are taking part?", "names.title": "Player names", "names.many": "What are the {0} players called?", "names.one": "What is the player's name?",
+  "player": "Player {0}", "variant.title": "Game variant", "variant.ask": "Which rules should apply?",
+  "variant.classic.name": "Classic", "variant.alt.name": "Alternative",
+  "variant.classic.desc": "Like standard Yahtzee: Three of a Kind and Four of a Kind score the sum of all five dice. There is no “One Pair”.",
+  "variant.alt.desc": "Three of a Kind and Four of a Kind only count the matching dice (Three = 3 × value, Four = 4 × value). There is an extra category “One Pair”.",
+  "start": "Start game", "resume.title": "Welcome back", "resume.sub": "There is a saved game.", "resume.info": "{0} variant · {1} of {2} entries",
+  "newGame": "New game", "continue": "Continue", "undoShort": "↶ Undo", "undo.long": "Undo last entry", "undo": "Undo", "menu.aria": "Menu",
+  "gameOver": "Game over", "round": "Round {0} of {1}",
+  "st.sel": "Tap the correct value for the marked die.", "st.first": "Tap below what you rolled, or roll digitally.",
+  "st.missing": "Enter the {0} newly rolled dice or roll them digitally. Red = kept.",
+  "st.analysis": "Tap dice to keep them (red). Long-press to correct a value.",
+  "st.last": "That was your last roll. Now enter a category or cross one out.",
+  "st.keep0": " Right now you reroll all 5.", "st.keep5": " You keep all dice.", "st.keepN": " You keep {0} and reroll {1}.",
+  "tag.keep": "Kept", "tag.new": "reroll", "die.aria": "Die {0}", "die.empty": ", empty", "die.kept": ", kept",
+  "digital": "Roll digitally", "next.roll": "Go to roll {0}", "reset.aria": "Restart turn",
+  "tab.eval": "Analysis", "tab.board": "Scorecard", "note.left": "Rolls left for {0}: {1}.", "note.none": "No rolls left.",
+  "note.hidden": " Categories already filled are not shown.",
+  "chip.auto": "Recommended", "chip.name": "Category", "chip.now": "Now", "chip.points": "Points", "chip.chance": "Odds", "chip.avg": "Avg points", "chip.rating": "Rating", "chip.info": "What does this mean?",
+  "now.label": "now", "pts.label": "points", "card.avg": "Avg. {0} points with best strategy",
+  "rec.rerollAll": "reroll all", "rec.keepAll": "keep all", "rec.keep": "keep {0}", "rec.apply": "apply", "rec.ok": "✓ selected", "card.yourSel": "Your selection:",
+  "btn.enter": "Enter ({0})", "btn.strike": "Cross out", "btn.strike0": "Cross out (0)",
+  "chance.title": "Last resort: Chance", "chance.desc": "Average {0} with a sum strategy, {1} with your selection. Only take it if nothing else fits.",
+  "chance.desc0": "Only take it if nothing else fits.", "chance.enter": "Enter Chance ({0})",
+  "empty.over": "The game is over. You can see the result on the scorecard.", "empty.dice": "Once all 5 dice are entered, you will see the analysis for {0} here.",
+  "empty.onlyChance": "Only Chance is left for {0}. Use the last resort below.",
+  "board.sumUp": "Upper sum", "board.bonus": "Bonus (63+)", "board.total": "Total",
+  "board.bonusSure": "{0} has secured the {1}-point bonus.", "board.bonusProg": "{0}: upper section {1} of {2} points for the bonus.",
+  "board.hintTap": "Tap a dashed field to enter the current roll there or to cross the field out. Swipe right for the analysis.",
+  "board.hintWait": "Once all 5 dice are entered, the free fields show what they would score.",
+  "toast.struck": "{0}: {1} crossed out", "toast.scored": "{0}: {1} {2} points", "final.rank": "{0}. {1} {2} points",
+  "ng.title": "Start a new game?", "ng.body": "The current game will be lost.", "ng.yes": "Yes, new game", "cancel": "Cancel", "close": "Close",
+  "cell.info": "{0}. With this roll: {1} points.", "cell.enter": "Enter {0} points", "cell.strike": "Cross out field (0 points)",
+  "menu.title": "Menu", "menu.explain": "Explain columns", "menu.lang": "Language",
+  "x.now.t": "Now / Points", "x.now.d": "Points you would get for this category right now with the dice on the table.",
+  "x.chance.t": "Odds", "x.chance.d": "Probability of reaching the goal of the category (shown under its name) by the end of the turn if you keep rolling optimally.",
+  "x.avg.t": "Avg points", "x.avg.d": "Average points expected in this category.",
+  "x.rating.t": "Rating", "x.rating.d": "Expected points minus the points this category yields on average in a normal turn. Green is worth taking now, red better save it.",
+  "x.rec.t": "Recommendation", "x.rec.d": "Which dice you should keep for this category. “apply” marks them for you.",
+  "x.sel.t": "Your selection", "x.sel.d": "Values if you keep exactly the dice marked red and reroll the rest.",
+  "x.order.t": "“Recommended” order", "x.order.d": "By rating. More ambitious goals come before easier ones once they are realistic (probability from 25 % or already reached): Yahtzee before Four of a Kind before Three of a Kind (before One Pair), Large before Small Straight. A reached goal also comes before a missed one that relies on the same dice (four 3s before a weak Four of a Kind made of 3s).",
+  "x.sort.t": "Sorting", "x.sort.d": "Tap a sort button. Tapping again reverses the direction (▼/▲).",
+  "x.swipe.t": "Swiping", "x.swipe.d": "Swipe left or right to switch between analysis and scorecard.",
+  "cat.u1": "Ones", "cat.u2": "Twos", "cat.u3": "Threes", "cat.u4": "Fours", "cat.u5": "Fives", "cat.u6": "Sixes", "cat.pair": "One Pair", "cat.p3": "Three of a Kind", "cat.p4": "Four of a Kind",
+  "cat.fh": "Full House", "cat.ks": "Small Straight", "cat.gs": "Large Straight", "cat.kn": "Yahtzee", "cat.ch": "Chance",
+  "short.upper": "Goal: at least 3× {0}s", "short.pair": "Goal: pair of 5s or 6s", "short.p3.classic": "Goal: total of 20+", "short.p4.classic": "Goal: total of 18+",
+  "short.p3.alt": "Goal: three 5s or 6s", "short.p4.alt": "Goal: four 4s, 5s or 6s", "short.fh": "25 points", "short.ks": "30 points", "short.gs": "40 points", "short.kn": "50 points", "short.ch": "Sum of all dice"
+},
+fr: {
+  "app.title": "Assistant Yams", "lang.title": "Choisir la langue", "next": "Suivant", "back": "Retour",
+  "howMany": "Combien de joueurs participent ?", "names.title": "Noms des joueurs", "names.many": "Comment s'appellent les {0} joueurs ?", "names.one": "Comment s'appelle le joueur ?",
+  "player": "Joueur {0}", "variant.title": "Variante de jeu", "variant.ask": "Quelles règles appliquer ?",
+  "variant.classic.name": "Classique", "variant.alt.name": "Alternative",
+  "variant.classic.desc": "Comme le Yams classique : le brelan et le carré comptent la somme des cinq dés. Il n'y a pas de « Une paire ».",
+  "variant.alt.desc": "Le brelan et le carré ne comptent que les dés identiques (brelan = 3 × valeur, carré = 4 × valeur). Il y a en plus la catégorie « Une paire ».",
+  "start": "Démarrer la partie", "resume.title": "Bon retour", "resume.sub": "Une partie sauvegardée existe.", "resume.info": "Variante {0} · {1} sur {2} inscriptions",
+  "newGame": "Nouvelle partie", "continue": "Reprendre", "undoShort": "↶ Annuler", "undo.long": "Annuler la dernière saisie", "undo": "Annuler", "menu.aria": "Menu",
+  "gameOver": "Partie terminée", "round": "Tour {0} sur {1}",
+  "st.sel": "Touche la bonne valeur pour le dé marqué.", "st.first": "Saisis ci-dessous ce que tu as obtenu, ou lance les dés numériquement.",
+  "st.missing": "Saisis les {0} dés relancés ou relance-les numériquement. Rouge = gardé.",
+  "st.analysis": "Touche des dés pour les garder (rouge). Appui long pour corriger la valeur.",
+  "st.last": "C'était ton dernier lancer. Inscris maintenant une catégorie ou barres-en une.",
+  "st.keep0": " Pour l'instant tu relances les 5 dés.", "st.keep5": " Tu gardes tous les dés.", "st.keepN": " Tu gardes {0} et relances {1}.",
+  "tag.keep": "Gardé", "tag.new": "relancer", "die.aria": "Dé {0}", "die.empty": ", vide", "die.kept": ", gardé",
+  "digital": "Lancer les dés", "next.roll": "Passer au lancer {0}", "reset.aria": "Recommencer le tour",
+  "tab.eval": "Analyse", "tab.board": "Feuille de score", "note.left": "Lancers restants pour {0} : {1}.", "note.none": "Plus aucun lancer.",
+  "note.hidden": " Les catégories déjà remplies ne sont pas affichées.",
+  "chip.auto": "Recommandé", "chip.name": "Catégorie", "chip.now": "Maintenant", "chip.points": "Points", "chip.chance": "Proba.", "chip.avg": "Pts moy.", "chip.rating": "Évaluation", "chip.info": "Que signifie cela ?",
+  "now.label": "maint.", "pts.label": "points", "card.avg": "Moy. {0} points avec la meilleure stratégie",
+  "rec.rerollAll": "tout relancer", "rec.keepAll": "tout garder", "rec.keep": "garde {0}", "rec.apply": "appliquer", "rec.ok": "✓ sélectionné", "card.yourSel": "Ta sélection :",
+  "btn.enter": "Inscrire ({0})", "btn.strike": "Barrer", "btn.strike0": "Barrer (0)",
+  "chance.title": "Dernier recours : Chance", "chance.desc": "En moyenne {0} avec une stratégie de somme, {1} avec ta sélection. À prendre seulement si rien d'autre ne convient.",
+  "chance.desc0": "À prendre seulement si rien d'autre ne convient.", "chance.enter": "Inscrire Chance ({0})",
+  "empty.over": "La partie est terminée. Le résultat se trouve dans la feuille de score.", "empty.dice": "Dès que les 5 dés sont saisis, tu verras ici l'analyse pour {0}.",
+  "empty.onlyChance": "Pour {0}, seule la Chance reste. Utilise le dernier recours ci-dessous.",
+  "board.sumUp": "Total haut", "board.bonus": "Bonus (dès 63)", "board.total": "Total",
+  "board.bonusSure": "{0} a assuré le bonus de {1} points.", "board.bonusProg": "{0} : section haute {1} sur {2} points pour le bonus.",
+  "board.hintTap": "Touche une case en pointillés pour y inscrire le lancer actuel ou la barrer. Balaye vers la droite pour l'analyse.",
+  "board.hintWait": "Dès que les 5 dés sont saisis, les cases libres montrent ce qu'elles rapporteraient.",
+  "toast.struck": "{0} : {1} barré", "toast.scored": "{0} : {1} {2} points", "final.rank": "{0}. {1} {2} points",
+  "ng.title": "Démarrer une nouvelle partie ?", "ng.body": "La partie en cours sera perdue.", "ng.yes": "Oui, nouvelle partie", "cancel": "Annuler", "close": "Fermer",
+  "cell.info": "{0}. Avec ce lancer : {1} points.", "cell.enter": "Inscrire {0} points", "cell.strike": "Barrer la case (0 point)",
+  "menu.title": "Menu", "menu.explain": "Colonnes expliquées", "menu.lang": "Langue",
+  "x.now.t": "Maintenant / Points", "x.now.d": "Points que tu obtiens tout de suite dans cette catégorie avec les dés actuels.",
+  "x.chance.t": "Proba.", "x.chance.d": "Probabilité d'atteindre l'objectif de la catégorie (indiqué sous son nom) d'ici la fin du tour si tu continues de façon optimale.",
+  "x.avg.t": "Pts moy.", "x.avg.d": "Points moyens attendus dans cette catégorie.",
+  "x.rating.t": "Évaluation", "x.rating.d": "Points attendus moins les points que la catégorie rapporte en moyenne lors d'un tour normal. Vert : ça vaut le coup maintenant, rouge : mieux vaut attendre.",
+  "x.rec.t": "Recommandation", "x.rec.d": "Quels dés garder pour cette catégorie. « appliquer » les marque pour toi.",
+  "x.sel.t": "Ta sélection", "x.sel.d": "Valeurs si tu gardes exactement les dés marqués en rouge et relances le reste.",
+  "x.order.t": "Tri « Recommandé »", "x.order.d": "Selon l'évaluation. Les objectifs plus ambitieux passent avant les plus faciles dès qu'ils sont réalistes (probabilité d'au moins 25 % ou déjà atteint) : Yams avant carré avant brelan (avant paire), grande suite avant petite suite. Un objectif atteint passe aussi avant un objectif manqué reposant sur les mêmes dés (quatre 3 avant un carré faible de 3).",
+  "x.sort.t": "Tri", "x.sort.d": "Touche un bouton de tri. Un second appui inverse l'ordre (▼/▲).",
+  "x.swipe.t": "Balayage", "x.swipe.d": "Balaye vers la gauche ou la droite pour passer de l'analyse à la feuille de score.",
+  "cat.u1": "As", "cat.u2": "Deux", "cat.u3": "Trois", "cat.u4": "Quatre", "cat.u5": "Cinq", "cat.u6": "Six", "cat.pair": "Une paire", "cat.p3": "Brelan", "cat.p4": "Carré",
+  "cat.fh": "Full", "cat.ks": "Petite suite", "cat.gs": "Grande suite", "cat.kn": "Yams", "cat.ch": "Chance",
+  "short.upper": "Objectif : au moins 3× le {0}", "short.pair": "Objectif : paire de 5 ou 6", "short.p3.classic": "Objectif : total d'au moins 20", "short.p4.classic": "Objectif : total d'au moins 18",
+  "short.p3.alt": "Objectif : trois 5 ou 6", "short.p4.alt": "Objectif : quatre 4, 5 ou 6", "short.fh": "25 points", "short.ks": "30 points", "short.gs": "40 points", "short.kn": "50 points", "short.ch": "Somme de tous les dés"
+},
+es: {
+  "app.title": "Asistente Yahtzee", "lang.title": "Elegir idioma", "next": "Siguiente", "back": "Atrás",
+  "howMany": "¿Cuántos jugadores participan?", "names.title": "Nombres de los jugadores", "names.many": "¿Cómo se llaman los {0} jugadores?", "names.one": "¿Cómo se llama el jugador?",
+  "player": "Jugador {0}", "variant.title": "Variante de juego", "variant.ask": "¿Qué reglas se aplican?",
+  "variant.classic.name": "Clásica", "variant.alt.name": "Alternativa",
+  "variant.classic.desc": "Como el Yahtzee normal: el trío y el póker suman los cinco dados. No existe «Un par».",
+  "variant.alt.desc": "El trío y el póker solo cuentan los dados iguales (trío = 3 × valor, póker = 4 × valor). Además existe la categoría «Un par».",
+  "start": "Empezar partida", "resume.title": "Bienvenido de nuevo", "resume.sub": "Hay una partida guardada.", "resume.info": "Variante {0} · {1} de {2} anotaciones",
+  "newGame": "Nueva partida", "continue": "Continuar", "undoShort": "↶ Deshacer", "undo.long": "Deshacer la última anotación", "undo": "Deshacer", "menu.aria": "Menú",
+  "gameOver": "Partida terminada", "round": "Ronda {0} de {1}",
+  "st.sel": "Toca el valor correcto para el dado marcado.", "st.first": "Toca abajo lo que has sacado, o tira los dados digitalmente.",
+  "st.missing": "Introduce los {0} dados nuevos o tíralos digitalmente. Rojo = guardado.",
+  "st.analysis": "Toca los dados para guardarlos (rojo). Pulsación larga para corregir el valor.",
+  "st.last": "Ese fue tu último lanzamiento. Anota ahora una categoría o tacha una.",
+  "st.keep0": " Ahora vuelves a tirar los 5.", "st.keep5": " Guardas todos los dados.", "st.keepN": " Guardas {0} y vuelves a tirar {1}.",
+  "tag.keep": "Guardado", "tag.new": "tirar", "die.aria": "Dado {0}", "die.empty": ", vacío", "die.kept": ", guardado",
+  "digital": "Tirar digitalmente", "next.roll": "Siguiente: tirada {0}", "reset.aria": "Reiniciar turno",
+  "tab.eval": "Análisis", "tab.board": "Hoja de puntos", "note.left": "Tiradas restantes de {0}: {1}.", "note.none": "No quedan tiradas.",
+  "note.hidden": " Las categorías ya ocupadas no se muestran.",
+  "chip.auto": "Recomendado", "chip.name": "Categoría", "chip.now": "Ahora", "chip.points": "Puntos", "chip.chance": "Prob.", "chip.avg": "Pts medios", "chip.rating": "Valoración", "chip.info": "¿Qué significa esto?",
+  "now.label": "ahora", "pts.label": "puntos", "card.avg": "Media {0} puntos con la mejor estrategia",
+  "rec.rerollAll": "tirar todos", "rec.keepAll": "guardar todos", "rec.keep": "guarda {0}", "rec.apply": "aplicar", "rec.ok": "✓ seleccionado", "card.yourSel": "Tu selección:",
+  "btn.enter": "Anotar ({0})", "btn.strike": "Tachar", "btn.strike0": "Tachar (0)",
+  "chance.title": "Último recurso: Chance", "chance.desc": "De media {0} con estrategia de suma, {1} con tu selección. Solo si nada más encaja.",
+  "chance.desc0": "Solo si nada más encaja.", "chance.enter": "Anotar Chance ({0})",
+  "empty.over": "La partida ha terminado. El resultado está en la hoja de puntos.", "empty.dice": "Cuando estén los 5 dados introducidos, verás aquí el análisis para {0}.",
+  "empty.onlyChance": "A {0} solo le queda Chance. Usa el último recurso de abajo.",
+  "board.sumUp": "Suma superior", "board.bonus": "Bonus (desde 63)", "board.total": "Total",
+  "board.bonusSure": "{0} tiene asegurado el bonus de {1} puntos.", "board.bonusProg": "{0}: parte superior {1} de {2} puntos para el bonus.",
+  "board.hintTap": "Toca una casilla discontinua para anotar ahí la tirada actual o tacharla. Desliza a la derecha para ir al análisis.",
+  "board.hintWait": "Cuando estén los 5 dados introducidos, las casillas libres mostrarán lo que valdrían.",
+  "toast.struck": "{0}: {1} tachado", "toast.scored": "{0}: {1} {2} puntos", "final.rank": "{0}. {1} {2} puntos",
+  "ng.title": "¿Empezar una partida nueva?", "ng.body": "La partida actual se perderá.", "ng.yes": "Sí, partida nueva", "cancel": "Cancelar", "close": "Cerrar",
+  "cell.info": "{0}. Con esta tirada: {1} puntos.", "cell.enter": "Anotar {0} puntos", "cell.strike": "Tachar casilla (0 puntos)",
+  "menu.title": "Menú", "menu.explain": "Columnas explicadas", "menu.lang": "Idioma",
+  "x.now.t": "Ahora / Puntos", "x.now.d": "Puntos que obtendrías ahora mismo en esta categoría con los dados actuales.",
+  "x.chance.t": "Prob.", "x.chance.d": "Probabilidad de alcanzar el objetivo de la categoría (indicado bajo su nombre) al final del turno si sigues tirando de forma óptima.",
+  "x.avg.t": "Pts medios", "x.avg.d": "Puntos medios esperados en esta categoría.",
+  "x.rating.t": "Valoración", "x.rating.d": "Puntos esperados menos los puntos que la categoría da de media en un turno normal. Verde merece la pena ahora, rojo mejor guardarla.",
+  "x.rec.t": "Recomendación", "x.rec.d": "Qué dados deberías guardar para esta categoría. «aplicar» los marca por ti.",
+  "x.sel.t": "Tu selección", "x.sel.d": "Valores si guardas exactamente los dados marcados en rojo y vuelves a tirar el resto.",
+  "x.order.t": "Orden «Recomendado»", "x.order.d": "Según la valoración. Los objetivos más ambiciosos van antes que los fáciles cuando son realistas (probabilidad desde el 25 % o ya conseguidos): Yahtzee antes que póker antes que trío (antes que un par), escalera grande antes que pequeña. Un objetivo logrado también va antes que uno fallido que usa los mismos dados (cuatro 3 antes que un póker flojo de 3).",
+  "x.sort.t": "Orden", "x.sort.d": "Toca un botón de orden. Tocar otra vez invierte la dirección (▼/▲).",
+  "x.swipe.t": "Deslizar", "x.swipe.d": "Desliza a izquierda o derecha para cambiar entre análisis y hoja de puntos.",
+  "cat.u1": "Unos", "cat.u2": "Doses", "cat.u3": "Treses", "cat.u4": "Cuatros", "cat.u5": "Cincos", "cat.u6": "Seises", "cat.pair": "Un par", "cat.p3": "Trío", "cat.p4": "Póker",
+  "cat.fh": "Full", "cat.ks": "Escalera pequeña", "cat.gs": "Escalera grande", "cat.kn": "Yahtzee", "cat.ch": "Chance",
+  "short.upper": "Objetivo: al menos 3× el {0}", "short.pair": "Objetivo: par de 5 o 6", "short.p3.classic": "Objetivo: suma de 20 o más", "short.p4.classic": "Objetivo: suma de 18 o más",
+  "short.p3.alt": "Objetivo: tres 5 o 6", "short.p4.alt": "Objetivo: cuatro 4, 5 o 6", "short.fh": "25 puntos", "short.ks": "30 puntos", "short.gs": "40 puntos", "short.kn": "50 puntos", "short.ch": "Suma de todos los dados"
+},
+it: {
+  "app.title": "Assistente Yahtzee", "lang.title": "Scegli la lingua", "next": "Avanti", "back": "Indietro",
+  "howMany": "Quanti giocatori partecipano?", "names.title": "Nomi dei giocatori", "names.many": "Come si chiamano i {0} giocatori?", "names.one": "Come si chiama il giocatore?",
+  "player": "Giocatore {0}", "variant.title": "Variante di gioco", "variant.ask": "Quali regole usare?",
+  "variant.classic.name": "Classica", "variant.alt.name": "Alternativa",
+  "variant.classic.desc": "Come lo Yahtzee normale: tris e poker valgono la somma di tutti e cinque i dadi. Non c'è «Una coppia».",
+  "variant.alt.desc": "Tris e poker valgono solo i dadi uguali (tris = 3 × valore, poker = 4 × valore). In più c'è la categoria «Una coppia».",
+  "start": "Inizia partita", "resume.title": "Bentornato", "resume.sub": "C'è una partita salvata.", "resume.info": "Variante {0} · {1} di {2} voci",
+  "newGame": "Nuova partita", "continue": "Continua", "undoShort": "↶ Annulla", "undo.long": "Annulla l'ultima voce", "undo": "Annulla", "menu.aria": "Menu",
+  "gameOver": "Partita finita", "round": "Turno {0} di {1}",
+  "st.sel": "Tocca il valore giusto per il dado selezionato.", "st.first": "Tocca qui sotto cosa hai ottenuto, oppure lancia i dadi in digitale.",
+  "st.missing": "Inserisci i {0} dadi lanciati o lanciali in digitale. Rosso = tenuto.",
+  "st.analysis": "Tocca i dadi per tenerli (rosso). Tieni premuto per correggere il valore.",
+  "st.last": "Era il tuo ultimo lancio. Ora segna una categoria o cancellane una.",
+  "st.keep0": " Per ora rilanci tutti e 5.", "st.keep5": " Tieni tutti i dadi.", "st.keepN": " Tieni {0} e rilanci {1}.",
+  "tag.keep": "Tenuto", "tag.new": "rilancia", "die.aria": "Dado {0}", "die.empty": ", vuoto", "die.kept": ", tenuto",
+  "digital": "Lancia in digitale", "next.roll": "Vai al lancio {0}", "reset.aria": "Ricomincia il turno",
+  "tab.eval": "Analisi", "tab.board": "Tabella punti", "note.left": "Lanci rimasti per {0}: {1}.", "note.none": "Nessun lancio rimasto.",
+  "note.hidden": " Le categorie già compilate non vengono mostrate.",
+  "chip.auto": "Consigliato", "chip.name": "Categoria", "chip.now": "Adesso", "chip.points": "Punti", "chip.chance": "Prob.", "chip.avg": "Punti medi", "chip.rating": "Valutazione", "chip.info": "Cosa significa?",
+  "now.label": "adesso", "pts.label": "punti", "card.avg": "Media {0} punti con la strategia migliore",
+  "rec.rerollAll": "rilancia tutti", "rec.keepAll": "tieni tutti", "rec.keep": "tieni {0}", "rec.apply": "applica", "rec.ok": "✓ selezionato", "card.yourSel": "La tua selezione:",
+  "btn.enter": "Segna ({0})", "btn.strike": "Cancella", "btn.strike0": "Cancella (0)",
+  "chance.title": "Ultima risorsa: Chance", "chance.desc": "In media {0} con strategia della somma, {1} con la tua selezione. Da usare solo se nient'altro va bene.",
+  "chance.desc0": "Da usare solo se nient'altro va bene.", "chance.enter": "Segna Chance ({0})",
+  "empty.over": "La partita è finita. Il risultato è nella tabella punti.", "empty.dice": "Appena inseriti tutti e 5 i dadi vedrai qui l'analisi per {0}.",
+  "empty.onlyChance": "Per {0} è rimasta solo la Chance. Usa l'ultima risorsa qui sotto.",
+  "board.sumUp": "Somma superiore", "board.bonus": "Bonus (da 63)", "board.total": "Totale",
+  "board.bonusSure": "{0} ha assicurato il bonus di {1} punti.", "board.bonusProg": "{0}: parte alta {1} su {2} punti per il bonus.",
+  "board.hintTap": "Tocca una casella tratteggiata per segnarci il lancio attuale o cancellarla. Scorri a destra per l'analisi.",
+  "board.hintWait": "Appena inseriti tutti e 5 i dadi, le caselle libere mostrano quanto varrebbero.",
+  "toast.struck": "{0}: {1} cancellato", "toast.scored": "{0}: {1} {2} punti", "final.rank": "{0}. {1} {2} punti",
+  "ng.title": "Iniziare una nuova partita?", "ng.body": "La partita attuale andrà persa.", "ng.yes": "Sì, nuova partita", "cancel": "Annulla", "close": "Chiudi",
+  "cell.info": "{0}. Con questo lancio: {1} punti.", "cell.enter": "Segna {0} punti", "cell.strike": "Cancella casella (0 punti)",
+  "menu.title": "Menu", "menu.explain": "Colonne spiegate", "menu.lang": "Lingua",
+  "x.now.t": "Adesso / Punti", "x.now.d": "Punti che otterresti subito in questa categoria con i dadi attuali.",
+  "x.chance.t": "Prob.", "x.chance.d": "Probabilità di raggiungere l'obiettivo della categoria (indicato sotto il nome) entro la fine del turno continuando in modo ottimale.",
+  "x.avg.t": "Punti medi", "x.avg.d": "Punti medi attesi in questa categoria.",
+  "x.rating.t": "Valutazione", "x.rating.d": "Punti attesi meno i punti che la categoria dà in media in un turno normale. Verde conviene ora, rosso meglio tenerla per dopo.",
+  "x.rec.t": "Consiglio", "x.rec.d": "Quali dadi tenere per questa categoria. «applica» li seleziona per te.",
+  "x.sel.t": "La tua selezione", "x.sel.d": "Valori se tieni esattamente i dadi segnati in rosso e rilanci gli altri.",
+  "x.order.t": "Ordine «Consigliato»", "x.order.d": "In base alla valutazione. Gli obiettivi più ambiziosi vengono prima di quelli facili quando sono realistici (probabilità dal 25 % o già raggiunti): Yahtzee prima di poker prima di tris (prima di una coppia), scala grande prima di scala piccola. Un obiettivo raggiunto viene anche prima di uno mancato che usa gli stessi dadi (quattro 3 prima di un poker debole di 3).",
+  "x.sort.t": "Ordinamento", "x.sort.d": "Tocca un pulsante di ordinamento. Toccando di nuovo si inverte la direzione (▼/▲).",
+  "x.swipe.t": "Scorrere", "x.swipe.d": "Scorri a sinistra o a destra per passare tra analisi e tabella punti.",
+  "cat.u1": "Uno", "cat.u2": "Due", "cat.u3": "Tre", "cat.u4": "Quattro", "cat.u5": "Cinque", "cat.u6": "Sei", "cat.pair": "Una coppia", "cat.p3": "Tris", "cat.p4": "Poker",
+  "cat.fh": "Full", "cat.ks": "Scala piccola", "cat.gs": "Scala grande", "cat.kn": "Yahtzee", "cat.ch": "Chance",
+  "short.upper": "Obiettivo: almeno 3× il {0}", "short.pair": "Obiettivo: coppia di 5 o 6", "short.p3.classic": "Obiettivo: somma da 20", "short.p4.classic": "Obiettivo: somma da 18",
+  "short.p3.alt": "Obiettivo: tre 5 o 6", "short.p4.alt": "Obiettivo: quattro 4, 5 o 6", "short.fh": "25 punti", "short.ks": "30 punti", "short.gs": "40 punti", "short.kn": "50 punti", "short.ch": "Somma di tutti i dadi"
+}
+};
+let LANG = "de";
+function t(key, ...a) {
+  const d = L[LANG] || L.de; let s = d[key] !== undefined ? d[key] : (L.de[key] !== undefined ? L.de[key] : key);
+  return s.replace(/\{(\d+)\}/g, (m, i) => a[+i] !== undefined ? a[+i] : "");
+}
+function detectLang() {
+  try { const s = localStorage.getItem(LSTORE); if (s && L[s]) return s; } catch (e) {}
+  const n = ((navigator.language || "de") + "").slice(0, 2).toLowerCase(); return L[n] ? n : "de";
+}
+const catName = c => t("cat." + c.id);
+const catShort = c => c.upper ? t("short.upper", c.id.slice(1)) : (c.id === "p3" || c.id === "p4") ? t("short." + c.id + "." + c.variant) : t("short." + c.id);
+
+/* =====================================================================
+   Darstellung
+   ===================================================================== */
+let G = null;
+const UI = { screen: "lang", tab: "eval", sortKey: "auto", sortDesc: true, sel: null, rolling: false, anim: {}, longpress: false, slide: 0,
+  setup: { n: 2, names: [], variant: "classic" } };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const decSep = () => LANG === "en" ? "." : ",";
+const fmtNum = x => x.toFixed(1).replace(".", decSep());
+const pctUnit = () => (LANG === "en" || LANG === "it") ? "%" : "\u00a0%";
+const fmtPct = p => p >= 0.99995 ? "100" + pctUnit() : p <= 0.00005 ? "0" + pctUnit() : (p * 100).toFixed(1).replace(".", decSep()) + pctUnit();
+const fmtW = x => Math.abs(x) < 0.05 ? "0" + decSep() + "0" : (x > 0 ? "+" : "\u2212") + fmtNum(Math.abs(x));
+const fmtRec = rec => rec.length === 0 ? t("rec.rerollAll") : rec.length === 5 ? t("rec.keepAll") : t("rec.keep", rec.join(" "));
+const chipClass = (w, muted) => muted ? "muted" : w > 0.05 ? "good" : w < -0.05 ? "bad" : "neutral";
+const vName = v => t("variant." + v + ".name");
+
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+function dieSVG(v, state) {
+  const locked = state === "locked", empty = v === 0;
+  let s = '<svg viewBox="0 0 100 100" aria-hidden="true">';
+  if (empty) s += '<rect x="4" y="4" width="92" height="92" rx="19" fill="#264c42" stroke="#58867a" stroke-width="4" stroke-dasharray="9 7"/><text x="50" y="66" text-anchor="middle" font-size="46" font-weight="700" fill="#8fb5aa" font-family="Roboto,sans-serif">?</text>';
+  else {
+    s += '<rect x="4" y="4" width="92" height="92" rx="19" fill="' + (locked ? "#fff6e9" : "#f7f2e4") + '" stroke="' + (locked ? "#c4402f" : "#cdc5aa") + '" stroke-width="' + (locked ? 6 : 3) + '"/>';
+    for (const k of PIPS[v]) s += '<circle cx="' + (26 + 24 * (k % 3)) + '" cy="' + (26 + 24 * Math.floor(k / 3)) + '" r="8.6" fill="#1e1e22"/>';
+    if (locked) s += '<circle cx="86" cy="14" r="12" fill="#c4402f"/><circle cx="86" cy="14" r="5" fill="#fff6e9"/>';
+  }
+  return s + "</svg>";
+}
+
+function toast(msg, undo) {
+  const el = $("toast"); el.innerHTML = "<span>" + esc(msg) + "</span>" + (undo ? '<button data-act="undo">' + esc(t("undo")) + "</button>" : "");
+  el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), undo ? 5000 : 2200);
+}
+function openSheet(html) { $("toast").classList.remove("show"); $("sheet-root").innerHTML = '<div class="backdrop" data-act="closesheet"></div><div class="sheet">' + html + "</div>"; }
+function closeSheet() { $("sheet-root").innerHTML = ""; }
+
+function setLang(code) {
+  if (!L[code]) return; LANG = code;
+  try { localStorage.setItem(LSTORE, code); } catch (e) {}
+  document.documentElement.lang = code; document.title = t("app.title");
+  closeSheet();
+  if (UI.screen === "game" && G) renderGame(); else renderStart();
+}
+
+/* ---------- Einrichtung ---------- */
+function setupDice() { return '<div class="dicerow">' + [5,5,5,5,5].map(v => dieSVG(v, "normal")).join("") + "</div>"; }
+function renderStart() {
+  const s = UI.setup; let h = '<div class="setup"><div class="card">';
+  if (UI.screen === "resume") {
+    const names = G.players.map(p => esc(p.name)).join(", "), done = G.players.reduce((a, p) => a + Object.keys(p.scores).length, 0), total = catsOf(G).length * G.players.length;
+    h += setupDice() + "<h1>" + esc(t("resume.title")) + '</h1><p class="sub">' + esc(t("resume.sub")) + '</p><div class="resume"><p><b>' + names + "</b></p><p>" + esc(t("resume.info", vName(G.variant), done, total)) + "</p></div>" +
+      '<div class="row2"><button class="btn felt wide" data-act="freshgame">' + esc(t("newGame")) + '</button><button class="btn gold wide" data-act="resume">' + esc(t("continue")) + "</button></div>";
+  } else if (UI.screen === "lang") {
+    h += setupDice() + "<h1>" + esc(t("app.title")) + '</h1><p class="sub">' + esc(t("lang.title")) + '</p><div class="langlist">';
+    for (const [code, name] of LANGS) h += '<button class="vbtn ' + (LANG === code ? "on" : "") + '" data-act="setlang" data-l="' + code + '">' + name + "</button>";
+    h += '</div><button class="btn gold big" data-act="tocount">' + esc(t("next")) + "</button>";
+  } else if (UI.screen === "start") {
+    h += setupDice() + "<h1>" + esc(t("app.title")) + '</h1><p class="sub">' + esc(t("howMany")) + '</p><div class="countrow">';
+    for (let n = 1; n <= MAX_PLAYERS; n++) h += '<button class="' + (s.n === n ? "on" : "") + '" data-act="count" data-n="' + n + '">' + n + "</button>";
+    h += '</div><div class="row2"><button class="btn felt wide" data-act="tolang">' + esc(t("back")) + '</button><button class="btn gold wide" data-act="tonames">' + esc(t("next")) + "</button></div>";
+  } else if (UI.screen === "names") {
+    h += "<h1>" + esc(t("names.title")) + '</h1><p class="sub">' + esc(s.n > 1 ? t("names.many", s.n) : t("names.one")) + "</p>";
+    for (let i = 0; i < s.n; i++) h += '<div class="field"><label for="nm' + i + '">' + esc(t("player", i + 1)) + '</label><input id="nm' + i + '" maxlength="' + MAX_NAME + '" value="' + esc(s.names[i] !== undefined ? s.names[i] : t("player", i + 1)) + '" autocomplete="off" enterkeyhint="next"></div>';
+    h += '<div class="row2"><button class="btn felt wide" data-act="tostart">' + esc(t("back")) + '</button><button class="btn gold wide" data-act="tovariant">' + esc(t("next")) + "</button></div>";
+  } else if (UI.screen === "variant") {
+    h += "<h1>" + esc(t("variant.title")) + '</h1><p class="sub">' + esc(t("variant.ask")) + "</p>";
+    for (const v of ["classic", "alt"]) h += '<button class="vbtn ' + (s.variant === v ? "on" : "") + '" data-act="variant" data-v="' + v + '">' + esc(vName(v)) + "<small>" + esc(t("variant." + v + ".desc")) + "</small></button>";
+    h += '<div class="row2"><button class="btn felt wide" data-act="tonames2">' + esc(t("back")) + '</button><button class="btn gold wide" data-act="startgame">' + esc(t("start")) + "</button></div>";
+  }
+  $("app").innerHTML = h + "</div></div>";
+}
+function readNames() {
+  const out = [], used = {};
+  for (let i = 0; i < UI.setup.n; i++) { const el = $("nm" + i); let nm = (el ? el.value : "").trim().slice(0, MAX_NAME) || t("player", i + 1);
+    used[nm] = (used[nm] || 0) + 1; if (used[nm] > 1) nm = nm.slice(0, MAX_NAME - 4) + " (" + used[nm] + ")"; out.push(nm); }
+  return out;
+}
+
+/* ---------- Spielansicht ---------- */
+function renderGame() {
+  $("app").innerHTML = '<div class="bar"><h2>' + esc(t("app.title")) + '</h2><div class="ibtns"><button class="ibtn" id="btnUndo" data-act="undo" aria-label="' + esc(t("undo.long")) + '">' + esc(t("undoShort")) + '</button><button class="ibtn" data-act="menu" aria-label="' + esc(t("menu.aria")) + '">⋯</button></div></div>' +
+    '<div id="panel"></div><div class="tabs"><button id="tabEval" data-act="tab" data-t="eval">' + esc(t("tab.eval")) + '</button><button id="tabBoard" data-act="tab" data-t="board">' + esc(t("tab.board")) + '</button></div><div class="content" id="content"></div>';
+  update();
+}
+function update() { if (!G) return; renderPanel(); renderContent(); saveGame(); }
+
+function renderPanel() {
+  const g = G, fin = isFinished(g), complete = isComplete(g), r = 3 - g.rollNo, keepN = g.keep.filter(Boolean).length, vname = vName(g.variant);
+  const rolling = UI.rolling;
+  let head, status;
+  if (fin) {
+    const rank = g.players.map((p, i) => [i, totals(g, i).total]).sort((a, b) => b[1] - a[1]);
+    head = '<div class="phead"><div class="pname">' + esc(t("gameOver")) + '</div><div class="pround">' + esc(vname) + "</div></div>";
+    status = rank.map((x, k) => t("final.rank", k + 1, g.players[x[0]].name, x[1])).join(" · ");
+  } else {
+    const p = g.players[g.current], rnd = Object.keys(p.scores).length + 1;
+    head = '<div class="phead"><div class="pname">' + esc(p.name) + '</div><div class="dots">' + [1,2,3].map(k => '<i class="' + (k <= g.rollNo ? "on" : "") + '"></i>').join("") + '</div><div class="pround">' + esc(t("round", rnd, catsOf(g).length)) + "<br>" + esc(vname) + "</div></div>";
+    if (!complete) { const miss = g.dice.filter(v => v === 0).length;
+      status = UI.sel !== null ? t("st.sel") : (g.rollNo === 1 && miss === 5) ? t("st.first") : t("st.missing", miss);
+    } else if (r > 0) status = t("st.analysis");
+    else status = t("st.last");
+  }
+  let dice = '<div class="dice">', tags = '<div class="tags">';
+  for (let i = 0; i < 5; i++) {
+    const animV = UI.anim[i], v = animV !== undefined ? animV : g.dice[i];
+    const locked = complete ? g.keep[i] : g.frozen[i];
+    const state = animV !== undefined ? "normal" : (v === 0 ? "empty" : locked ? "locked" : "normal");
+    dice += '<button class="die' + (UI.sel === i ? " sel" : "") + (animV !== undefined ? " roll" : "") + '" data-act="die" data-i="' + i + '" aria-label="' + esc(t("die.aria", i + 1) + (v ? ", " + v : t("die.empty")) + (locked ? t("die.kept") : "")) + '">' + dieSVG(v, state) + "</button>";
+    const togglable = complete && r > 0 && !fin;
+    tags += '<span class="' + (locked ? "keep" : "") + '">' + esc(locked ? t("tag.keep") : togglable ? t("tag.new") : "") + "</span>";
+  }
+  dice += "</div>"; tags += "</div>";
+  const showPad = !fin && (!complete || UI.sel !== null) && !rolling;
+  let pad = ""; if (showPad) { pad = '<div class="pad">'; for (let k = 1; k <= 6; k++) pad += '<button data-act="pad" data-k="' + k + '">' + k + "</button>"; pad += "</div>"; }
+  const canDigital = !fin && !rolling && (!complete || (r > 0 && keepN < 5));
+  const canNext = !fin && !rolling && complete && r > 0 && keepN < 5;
+  let acts = '<div class="acts">';
+  if (fin) acts += '<button class="btn gold wide" data-act="newgame">' + esc(t("newGame")) + "</button>";
+  else acts += '<button class="btn gold wide" data-act="digital"' + (canDigital ? "" : " disabled") + ">" + esc(t("digital")) + '</button><button class="btn felt wide" data-act="reroll"' + (canNext ? "" : " disabled") + ">" + esc(t("next.roll", Math.min(g.rollNo + 1, 3))) + '</button><button class="btn felt small" data-act="resetturn" aria-label="' + esc(t("reset.aria")) + '"' + (!rolling && (g.rollNo > 1 || g.dice.some(Boolean)) ? "" : " disabled") + ">↺</button>";
+  acts += "</div>";
+  if (complete && r > 0 && !fin) status += keepN === 0 ? t("st.keep0") : keepN === 5 ? t("st.keep5") : t("st.keepN", keepN, 5 - keepN);
+  $("panel").innerHTML = '<section class="panel">' + head + dice + tags + pad + acts + '<div class="status">' + esc(status) + "</div></section>";
+  const u = $("btnUndo"); if (u) u.disabled = !g.history.length || rolling;
+}
+
+function sortChips(r) {
+  const full = r > 0, chips = [["auto", t("chip.auto")], ["name", t("chip.name")], ["now", full ? t("chip.now") : t("chip.points")]];
+  if (full) chips.push(["bp", t("chip.chance")], ["be", t("chip.avg")], ["bw", t("chip.rating")]); else chips.push(["bw", t("chip.rating")]);
+  const eff = !full && ["bp", "be", "sp", "se", "sw"].includes(UI.sortKey) ? "bw" : UI.sortKey;
+  return '<div class="sortrow">' + chips.map(([k, tx]) => '<button class="sortchip' + (eff === k ? " on" : "") + '" data-act="sort" data-k="' + k + '">' + esc(tx) + (eff === k ? (UI.sortDesc ? " ▼" : " ▲") : "") + "</button>").join("") + '<button class="sortchip info" data-act="explain">' + esc(t("chip.info")) + "</button></div>";
+}
+
+function evalCard(row, r, kept, top) {
+  const c = row.cat, hasLocks = kept.length > 0;
+  let h = '<article class="card' + (top ? " top" : "") + '"><div class="chead"><div><div class="cname">' + esc(catName(c)) + '</div><div class="cshort">' + esc(catShort(c)) + '</div></div><div class="cnow num"><b>' + row.now + "</b><span>" + esc(r > 0 ? t("now.label") : t("pts.label")) + "</span></div></div>";
+  if (r > 0) {
+    h += '<div class="metric"><div class="mp num">' + fmtPct(row.bp) + '</div><div class="bar2"><i style="width:' + (row.bp * 100).toFixed(1) + '%"></i></div><span class="chip ' + chipClass(row.bw) + ' num">' + fmtW(row.bw) + "</span></div>";
+    h += '<div class="sub num">' + esc(t("card.avg", fmtNum(row.be))) + "</div>";
+    const same = row.rec.slice().sort((a, b) => a - b).join("") === kept.join("");
+    h += '<div class="rec"><span>' + esc(fmtRec(row.rec)) + "</span>" + (same ? '<span class="ok">' + esc(t("rec.ok")) + "</span>" : '<a data-act="rec" data-cat="' + c.id + '">' + esc(t("rec.apply")) + "</a>") + "</div>";
+    if (hasLocks) h += '<div class="selrow num"><span>' + esc(t("card.yourSel")) + "</span><b>" + fmtPct(row.sp) + "</b><span>Ø " + fmtNum(row.se) + '</span><span class="chip ' + chipClass(row.sw) + '">' + fmtW(row.sw) + "</span></div>";
+  } else h += '<div class="metric"><span class="sub" style="margin:0">' + esc(t("chip.rating")) + '</span><span class="chip ' + chipClass(row.now_w) + ' num">' + fmtW(row.now_w) + "</span></div>";
+  h += '<div class="cbtns">';
+  if (row.now > 0) h += '<button class="btn ink main" data-act="enter" data-cat="' + c.id + '">' + esc(t("btn.enter", row.now)) + '</button><button class="btn soft" data-act="strike" data-cat="' + c.id + '">' + esc(t("btn.strike")) + "</button>";
+  else h += '<button class="btn soft main" data-act="strike" data-cat="' + c.id + '">' + esc(t("btn.strike0")) + "</button>";
+  return h + "</div></article>";
+}
+
+function renderContent() {
+  $("tabEval").classList.toggle("on", UI.tab === "eval"); $("tabBoard").classList.toggle("on", UI.tab === "board");
+  const el = $("content"); el.innerHTML = UI.tab === "eval" ? renderEval() : renderBoard();
+  if (UI.slide) { el.classList.remove("slideL", "slideR"); void el.offsetWidth; el.classList.add(UI.slide > 0 ? "slideR" : "slideL"); UI.slide = 0; }
+}
+
+function renderEval() {
+  const g = G, fin = isFinished(g), complete = isComplete(g), r = 3 - g.rollNo, name = esc(g.players[g.current].name);
+  if (fin) return '<div class="empty">' + esc(t("empty.over")) + "</div>";
+  if (!complete) return '<div class="empty">' + esc(t("empty.dice", g.players[g.current].name)) + "</div>";
+  const open = openCats(g), kept = keptKeyOf(g.dice, g.keep).split("").filter(Boolean).map(Number), hasLocks = kept.length > 0;
+  let rows = orderRows(analyse(g.dice, g.rollNo, g.keep, open), r, hasLocks, UI.sortKey, UI.sortDesc);
+  let h = '<p class="note">' + esc((r > 0 ? t("note.left", g.players[g.current].name, r) : t("note.none")) + t("note.hidden")) + "</p>" + sortChips(r);
+  if (!rows.length) h += '<div class="empty">' + esc(t("empty.onlyChance", g.players[g.current].name)) + "</div>";
+  rows.forEach((row, i) => h += evalCard(row, r, kept, i === 0));
+  const ch = open.find(c => c.notnagel);
+  if (ch) { const info = chanceInfo(g.dice, g.rollNo, g.keep, ch);
+    h += '<article class="card chance"><div class="chead"><div><div class="cname">' + esc(t("chance.title")) + '</div><div class="cshort">' + esc(r > 0 ? t("chance.desc", fmtNum(info.best_e), fmtNum(info.sel_e)) : t("chance.desc0")) + '</div></div><div class="cnow num"><b>' + info.now + "</b><span>" + esc(t("now.label")) + "</span></div></div>" +
+      '<div class="cbtns"><button class="btn ink main" data-act="enter" data-cat="ch">' + esc(t("chance.enter", info.now)) + '</button><button class="btn soft" data-act="strike" data-cat="ch">' + esc(t("btn.strike")) + "</button></div></article>"; }
+  return h;
+}
+
+function renderBoard() {
+  const g = G, n = g.players.length, fin = isFinished(g), complete = isComplete(g) && !fin && !UI.rolling, cats = catsOf(g);
+  const tots = g.players.map((p, i) => totals(g, i)), sd = complete ? [...g.dice].sort((a, b) => a - b) : null;
+  let h = '<div class="boardwrap"><table class="board"><thead><tr><th></th>' + g.players.map((p, i) => '<th class="' + (i === g.current && !fin ? "cur" : "") + '">' + esc(p.name) + "</th>").join("") + "</tr></thead><tbody>";
+  const catRow = c => { let r = "<tr><td>" + esc(catName(c)) + "</td>";
+    g.players.forEach((p, i) => { const s = p.scores[c.id], cur = i === g.current && !fin;
+      if (s) r += '<td class="' + (cur ? "cur " : "") + (s[1] ? "struck" : "") + ' num">' + (s[1] ? "0 ×" : s[0]) + "</td>";
+      else if (cur && complete) r += '<td class="cur open click num" data-act="cell" data-cat="' + c.id + '">' + c.score(sd) + "</td>";
+      else r += '<td class="' + (cur ? "cur" : "") + '"></td>'; });
+    return r + "</tr>"; };
+  cats.filter(c => c.upper).forEach(c => h += catRow(c));
+  h += '<tr class="sum"><td>' + esc(t("board.sumUp")) + "</td>" + tots.map((tt, i) => '<td class="num ' + (i === g.current && !fin ? "cur" : "") + '">' + tt.up + "</td>").join("") + "</tr>";
+  h += "<tr><td>" + esc(t("board.bonus")) + "</td>" + tots.map((tt, i) => '<td class="num ' + (i === g.current && !fin ? "cur" : "") + '">' + (tt.bonus || "") + "</td>").join("") + "</tr>";
+  cats.filter(c => !c.upper).forEach(c => h += catRow(c));
+  h += '<tr class="total"><td>' + esc(t("board.total")) + "</td>" + tots.map((tt, i) => '<td class="num ' + (i === g.current && !fin ? "cur" : "") + '">' + tt.total + "</td>").join("") + "</tr></tbody></table></div>";
+  if (!fin) { const up = tots[g.current].up, frac = Math.min(1, up / BONUS_LIMIT), nm = g.players[g.current].name;
+    h += '<div class="bonusbox">' + esc(up >= BONUS_LIMIT ? t("board.bonusSure", nm, BONUS_POINTS) : t("board.bonusProg", nm, up, BONUS_LIMIT)) + '<div class="bonusbar"><i style="width:' + (frac * 100) + "%;" + (up >= BONUS_LIMIT ? "background:var(--good)" : "") + '"></i></div></div>';
+    h += '<p class="hint">' + esc(complete ? t("board.hintTap") : t("board.hintWait")) + "</p>"; }
+  return h;
+}
+
+/* ---------- Aktionen ---------- */
+function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+function setDie(v) {
+  const g = G; if (isFinished(g) || UI.rolling) return;
+  if (UI.sel !== null) { g.dice[UI.sel] = v; UI.sel = null; }
+  else { const i = g.dice.indexOf(0); if (i < 0) return; g.dice[i] = v; }
+  update();
+}
+function toggleKeep(i) { const g = G; if (isFinished(g) || UI.rolling || !isComplete(g) || 3 - g.rollNo <= 0) return; g.keep[i] = !g.keep[i]; update(); }
+function prepareNextRoll() { const g = G; g.frozen = g.keep.slice(); g.dice = g.dice.map((v, i) => g.keep[i] ? v : 0); g.keep = [false,false,false,false,false]; g.rollNo++; UI.sel = null; }
+function reroll() { const g = G; if (UI.rolling || !isComplete(g) || g.rollNo >= 3 || g.keep.every(Boolean)) return; prepareNextRoll(); update(); }
+function resetTurn() { if (UI.rolling) return; Object.assign(G, blankTurn()); UI.sel = null; update(); }
+function digitalRoll() {
+  const g = G; if (isFinished(g) || UI.rolling) return;
+  if (isComplete(g)) { if (3 - g.rollNo <= 0 || g.keep.every(Boolean)) return; prepareNextRoll(); }
+  const empties = []; g.dice.forEach((v, i) => { if (v === 0) empties.push(i); }); if (!empties.length) return;
+  const fin = {}; empties.forEach(i => fin[i] = 1 + Math.floor(Math.random() * 6));
+  UI.rolling = true; UI.sel = null; UI.anim = {}; let step = 0;
+  const tick = () => {
+    if (step < 9) { UI.anim = {}; empties.forEach(i => UI.anim[i] = 1 + Math.floor(Math.random() * 6)); step++; renderPanel(); vibrate(8); setTimeout(tick, 70); }
+    else { UI.anim = {}; UI.rolling = false; empties.forEach(i => g.dice[i] = fin[i]); vibrate(25); update(); }
+  };
+  tick();
+}
+function applyRec(cid) {
+  const g = G, r = 3 - g.rollNo; if (UI.rolling || !isComplete(g) || r <= 0) return;
+  const s = SIDX.get([...g.dice].sort((a, b) => a - b).join("")), rec = KEPT_ARR.get(tableFor(catOf(g, cid)).B[r][s]), keep = [false,false,false,false,false];
+  for (const v of rec) { for (let i = 0; i < 5; i++) if (g.dice[i] === v && !keep[i]) { keep[i] = true; break; } }
+  g.keep = keep; update();
+}
+function commit(cid, strike) {
+  const g = G; if (UI.rolling || isFinished(g) || !isComplete(g)) return;
+  const cat = catOf(g, cid), p = g.players[g.current]; if (cid in p.scores) return;
+  const pts = strike ? 0 : cat.score([...g.dice].sort((a, b) => a - b));
+  p.scores[cid] = [pts, !!(strike || pts === 0)]; g.history.push([g.current, cid]);
+  const who = p.name; g.current = (g.current + 1) % g.players.length; Object.assign(g, blankTurn()); UI.sel = null; closeSheet();
+  update(); window.scrollTo(0, 0);
+  toast(strike || pts === 0 ? t("toast.struck", who, catName(cat)) : t("toast.scored", who, catName(cat), pts), true);
+}
+function undo() {
+  const g = G; if (UI.rolling || !g.history.length) return;
+  const [pi, cid] = g.history.pop(); delete g.players[pi].scores[cid]; g.current = pi; Object.assign(g, blankTurn()); UI.sel = null; closeSheet(); update();
+  $("toast").classList.remove("show");
+}
+function askNewGame() {
+  if (isFinished(G) || !G.players.some(p => Object.keys(p.scores).length)) return newGameConfirmed();
+  openSheet("<h3>" + esc(t("ng.title")) + "</h3><p>" + esc(t("ng.body")) + '</p><button class="btn ink" data-act="newyes">' + esc(t("ng.yes")) + '</button><button class="btn soft" data-act="closesheet">' + esc(t("cancel")) + "</button>");
+}
+function newGameConfirmed() { clearSave(); G = null; closeSheet(); UI.screen = "lang"; UI.setup = { n: 2, names: [], variant: "classic" }; renderStart(); }
+function explain() {
+  const item = k => "<dt>" + esc(t("x." + k + ".t")) + "</dt><dd>" + esc(t("x." + k + ".d")) + "</dd>";
+  openSheet("<h3>" + esc(t("chip.info")) + "</h3><dl>" + ["now", "chance", "avg", "rating", "rec", "sel", "order", "sort", "swipe"].map(item).join("") + '</dl><button class="btn soft" data-act="closesheet">' + esc(t("close")) + "</button>");
+}
+function langSheet() {
+  openSheet("<h3>" + esc(t("menu.lang")) + "</h3>" + LANGS.map(([c, n]) => '<button class="btn ' + (LANG === c ? "ink" : "soft") + '" data-act="setlang" data-l="' + c + '">' + n + "</button>").join("") + '<button class="btn soft" data-act="closesheet">' + esc(t("close")) + "</button>");
+}
+function cellSheet(cid) {
+  const g = G, c = catOf(g, cid), pts = c.score([...g.dice].sort((a, b) => a - b));
+  openSheet("<h3>" + esc(catName(c)) + "</h3><p>" + esc(t("cell.info", catShort(c), pts)) + "</p>" +
+    (pts > 0 ? '<button class="btn ink" data-act="enter" data-cat="' + cid + '">' + esc(t("cell.enter", pts)) + '</button><button class="btn soft" data-act="strike" data-cat="' + cid + '">' + esc(t("cell.strike")) + "</button>"
+             : '<button class="btn ink" data-act="strike" data-cat="' + cid + '">' + esc(t("cell.strike")) + "</button>") +
+    '<button class="btn soft" data-act="closesheet">' + esc(t("cancel")) + "</button>");
+}
+function swipeTab(dir) {
+  const order = ["eval", "board"], i = order.indexOf(UI.tab), j = Math.max(0, Math.min(order.length - 1, i + dir));
+  if (j === i || !G || UI.screen !== "game") return;
+  UI.tab = order[j]; UI.slide = dir; renderContent(); window.scrollTo(0, 0); vibrate(8);
+}
+
+/* ---------- Ereignisse ---------- */
+let lpTimer = null;
+document.addEventListener("pointerdown", e => {
+  const d = e.target.closest(".die"); if (!d) return; UI.longpress = false; clearTimeout(lpTimer);
+  lpTimer = setTimeout(() => { if (!G || UI.rolling || isFinished(G)) return; UI.longpress = true; const i = +d.dataset.i; UI.sel = UI.sel === i ? null : i; vibrate(20); renderPanel(); }, 450);
+});
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => document.addEventListener(ev, () => clearTimeout(lpTimer)));
+document.addEventListener("contextmenu", e => { if (e.target.closest(".die")) e.preventDefault(); });
+
+/* Wischen zwischen Auswertung und Punkteblock */
+let swp = null;
+document.addEventListener("touchstart", e => {
+  swp = null; if (UI.screen !== "game" || !G || e.touches.length !== 1) return;
+  const el = e.target; if (!el.closest || !el.closest("#content") || el.closest(".sortrow")) return;
+  const bw = el.closest(".boardwrap"); if (bw && bw.scrollWidth > bw.clientWidth + 2) return;
+  const p = e.touches[0]; swp = { x: p.clientX, y: p.clientY, t: Date.now() };
+}, { passive: true });
+document.addEventListener("touchend", e => {
+  if (!swp) return; const p = e.changedTouches[0], dx = p.clientX - swp.x, dy = p.clientY - swp.y, dt = Date.now() - swp.t; swp = null;
+  if (Math.abs(dx) >= 70 && Math.abs(dx) > Math.abs(dy) * 1.6 && dt < 800) swipeTab(dx < 0 ? 1 : -1);
+}, { passive: true });
+document.addEventListener("touchcancel", () => { swp = null; }, { passive: true });
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el || el.disabled) return;
+  const a = el.dataset.act;
+  switch (a) {
+    case "setlang": setLang(el.dataset.l); break;
+    case "tolang": UI.screen = "lang"; renderStart(); break;
+    case "tocount": UI.screen = "start"; renderStart(); break;
+    case "count": UI.setup.n = +el.dataset.n; renderStart(); break;
+    case "tonames": UI.screen = "names"; renderStart(); break;
+    case "tostart": UI.setup.names = readNames(); UI.screen = "start"; renderStart(); break;
+    case "tovariant": UI.setup.names = readNames(); UI.screen = "variant"; renderStart(); break;
+    case "tonames2": UI.screen = "names"; renderStart(); break;
+    case "variant": UI.setup.variant = el.dataset.v; renderStart(); break;
+    case "startgame": G = newGame(UI.setup.names, UI.setup.variant); UI.sortKey = "auto"; UI.sortDesc = true; UI.tab = "eval"; UI.screen = "game"; saveGame(); renderGame(); break;
+    case "resume": UI.screen = "game"; renderGame(); break;
+    case "freshgame": clearSave(); G = null; UI.screen = "lang"; renderStart(); break;
+    case "die": { if (UI.longpress) { UI.longpress = false; break; } const i = +el.dataset.i, g = G;
+      if (UI.rolling || isFinished(g)) break;
+      if (!isComplete(g)) { UI.sel = UI.sel === i ? null : i; renderPanel(); } else toggleKeep(i); break; }
+    case "pad": setDie(+el.dataset.k); break;
+    case "digital": digitalRoll(); break;
+    case "reroll": reroll(); break;
+    case "resetturn": resetTurn(); break;
+    case "tab": { const nt = el.dataset.t; if (nt !== UI.tab) { UI.slide = nt === "board" ? 1 : -1; UI.tab = nt; renderContent(); } break; }
+    case "sort": { const k = el.dataset.k; if (k === UI.sortKey) UI.sortDesc = !UI.sortDesc; else { UI.sortKey = k; UI.sortDesc = k !== "name"; } renderContent(); break; }
+    case "explain": explain(); break;
+    case "rec": applyRec(el.dataset.cat); break;
+    case "enter": commit(el.dataset.cat, false); break;
+    case "strike": commit(el.dataset.cat, true); break;
+    case "cell": cellSheet(el.dataset.cat); break;
+    case "undo": undo(); break;
+    case "newgame": askNewGame(); break;
+    case "newyes": newGameConfirmed(); break;
+    case "closesheet": closeSheet(); break;
+    case "langmenu": langSheet(); break;
+    case "menu": openSheet("<h3>" + esc(t("menu.title")) + '</h3><button class="btn ink" data-act="undo"' + (G.history.length ? "" : " disabled") + ">" + esc(t("undo.long")) + '</button><button class="btn soft" data-act="explain">' + esc(t("menu.explain")) + '</button><button class="btn soft" data-act="langmenu">' + esc(t("menu.lang")) + '</button><button class="btn soft" data-act="newgame">' + esc(t("newGame")) + '</button><button class="btn soft" data-act="closesheet">' + esc(t("close")) + "</button>"); break;
+  }
+});
+document.addEventListener("keydown", e => { if (UI.screen === "game" && G && /^[1-6]$/.test(e.key) && !(e.target && e.target.tagName === "INPUT")) setDie(+e.key); });
+
+/* ---------- Start ---------- */
+(function init() {
+  LANG = detectLang(); document.documentElement.lang = LANG; document.title = t("app.title");
+  const saved = loadGame();
+  if (saved && !isFinished(saved) && saved.players.some(p => Object.keys(p.scores).length)) { G = saved; UI.screen = "resume"; } else { UI.screen = "lang"; }
+  renderStart();
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

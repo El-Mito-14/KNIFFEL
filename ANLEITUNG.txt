@@ -1,0 +1,98 @@
+KNIFFEL-ASSISTENT FÜR ANDROID (Oppo A74, Android 13, ColorOS 13)
+================================================================
+
+Das ist eine installierbare Web-App (PWA). Nach der Installation hat sie ein
+eigenes Icon auf dem Startbildschirm, startet im Vollbild wie eine normale App
+und funktioniert auch ohne Internet. Der Spielstand bleibt auf dem Handy.
+
+Inhalt dieses Ordners:
+  index.html              die App
+  manifest.webmanifest    Beschreibung der App (Name, Icon, Farben)
+  sw.js                   sorgt dafür, dass die App offline läuft
+  icon-*.png              App-Icons
+
+
+SCHRITT 1: App einmalig ins Netz stellen (kostenlos, ca. 5 Minuten)
+-------------------------------------------------------------------
+Damit Android die Seite als App installieren darf, muss sie über eine
+https-Adresse erreichbar sein. Das geht zum Beispiel so:
+
+Variante A: Netlify (am einfachsten)
+  1. ZIP auf dem PC entpacken.
+  2. https://app.netlify.com/drop öffnen (kostenloses Konto anlegen oder
+     anmelden).
+  3. Den entpackten Ordner "Kniffel-Android" in das Feld ziehen.
+  4. Netlify zeigt dir eine Adresse wie https://irgendwas.netlify.app an.
+     Optional unter "Site configuration" einen schöneren Namen vergeben.
+
+Variante B: GitHub Pages
+  1. Auf github.com ein neues öffentliches Repository anlegen.
+  2. Alle Dateien aus dem Ordner hochladen ("Add file" > "Upload files").
+  3. Settings > Pages > Branch "main" auswählen > Save.
+  4. Nach ca. einer Minute ist die App unter
+     https://DEINNAME.github.io/REPOSITORY/ erreichbar.
+
+
+SCHRITT 2: Auf dem Oppo A74 installieren
+----------------------------------------
+  1. Chrome auf dem Handy öffnen (Chrome statt dem Oppo-Browser verwenden)
+     und die Adresse aus Schritt 1 aufrufen.
+  2. Oben rechts auf die drei Punkte tippen.
+  3. "App installieren" (oder "Zum Startbildschirm hinzufügen" und dann
+     "Installieren") wählen.
+  4. Das Kniffel-Icon liegt jetzt auf dem Startbildschirm. Beim ersten
+     Öffnen einmal mit Internet starten, danach geht es auch offline.
+
+Tipp für Freunde: Schick ihnen einfach die Adresse. Sie öffnen sie in Chrome
+und installieren die App auf dieselbe Weise (auch auf iPhones: Teilen-Symbol >
+"Zum Home-Bildschirm").
+
+
+OPTIONAL: Eine echte APK-Datei erzeugen
+---------------------------------------
+Wenn du unbedingt eine .apk zum Verschicken haben möchtest:
+  1. https://www.pwabuilder.com öffnen und die Adresse aus Schritt 1 eingeben.
+  2. "Package for stores" > "Android" > Paket erzeugen und herunterladen.
+  3. Im heruntergeladenen ZIP liegt die .apk. Den mitgelieferten
+     Signatur-Schlüssel gut aufbewahren.
+  4. APK aufs Handy kopieren und antippen. Android fragt, ob du
+     "Installation aus unbekannten Quellen" für diese App erlauben willst
+     (bei ColorOS unter Einstellungen > Datenschutz bzw. Sicherheit).
+Für den Alltag reicht die Installation aus Schritt 2 völlig aus.
+
+
+NUR ZUM SCHNELLEN AUSPROBIEREN (ohne Internet-Adresse)
+------------------------------------------------------
+index.html aufs Handy kopieren (USB, Cloud, Messenger) und im Dateimanager mit
+Chrome öffnen. Die App läuft dann im Browser, lässt sich aber nicht als App
+installieren, und der Spielstand kann beim Löschen der Browserdaten verloren
+gehen.
+
+
+APP AKTUALISIEREN
+-----------------
+Wenn du eine neue Version bekommst: Dateien wie in Schritt 1 erneut hochladen
+(bei Netlify: den Ordner nochmal auf das Deploy-Feld ziehen). Die installierte
+App holt sich die neue Version beim nächsten Start mit Internet automatisch.
+Falls noch die alte Version erscheint: App einmal komplett schließen und neu
+öffnen. Dein Spielstand bleibt erhalten.
+
+
+BEDIENUNG IN KÜRZE
+------------------
+* Sprachen: Deutsch, English, Français, Español, Italiano. Die Sprache wählst
+  du vor der Spielerauswahl, im Spiel ändert sie das Menü (⋯) > Sprache.
+* Wischen: Mit dem Finger nach links oder rechts wischen wechselt zwischen
+  Auswertung und Punkteblock (nicht über die Sortier-Schaltflächen wischen,
+  die lassen sich selbst seitlich verschieben). Tipp: Nicht ganz am Bildrand
+  beginnen, dort kann Android die Zurück-Geste auslösen.
+* Beim Start Spieleranzahl, Namen und Variante (Klassisch oder Alternativ)
+  wählen.
+* Augen eintippen (Zahlentasten unten im Würfelfeld) oder "Digital würfeln".
+* Würfel antippen = behalten (rot). Lang drücken = Augenzahl korrigieren.
+* "Weiter zu Wurf 2" würfelt die nicht behaltenen Würfel neu.
+* Auswertung: Karten mit Chance, Ø Punkten, Bewertung und Empfehlung.
+  Oben lässt sich die Sortierung ändern, "Was bedeutet das?" erklärt alles.
+* Eintragen oder Streichen per Button in der Karte oder per Tipp auf ein
+  Feld im Punkteblock.
+* "Zurück" (oben) macht den letzten Eintrag rückgängig.
